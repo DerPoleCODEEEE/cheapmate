@@ -1,0 +1,15 @@
+{
+  "name": "cheapmate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes serve -l 8080 .",
+    "test": "node tools/uitest.mjs",
+    "balance": "node tools/balance.mjs",
+    "ramp": "node tools/rampe.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  }
+}

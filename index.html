@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CHEAPMATE</title>
+<meta name="description" content="Kaufe Figuren. Lass deinen billigen Fisch gewinnen. Fuettere ihn. Wiederhole.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐟</text></svg>">
+</head>
+<body>
+<div id="rough-defs"></div>
+
+<!-- ===================== LADEBILDSCHIRM ===================== -->
+<div id="boot" class="screen">
+  <div class="boot-inner">
+    <h1 class="logo">CHEAP<span>MATE</span></h1>
+    <p class="tagline">Du spielst kein Schach.<br>Du <em>investierst</em> in Schach.</p>
+    <div id="boot-fish" class="boot-fish"></div>
+    <div class="boot-bar"><div id="boot-bar-fill"></div></div>
+    <p id="boot-status" class="boot-status">Fisch wird aufgetaut...</p>
+    <button id="btn-play" class="big-btn hidden">LOSLEGEN</button>
+    <button id="btn-how" class="ghost-btn hidden">Wie geht das?</button>
+  </div>
+</div>
+
+<!-- ===================== HAUPTSPIEL ===================== -->
+<div id="game" class="screen hidden">
+  <header id="hud">
+    <div class="hud-logo">CHEAP<span>MATE</span></div>
+    <div class="hud-stats">
+      <div class="stat" id="stat-round"><b>1</b><small>Runde</small></div>
+      <div class="stat money" id="stat-money"><b>55$</b><small>Kasse</small></div>
+      <div class="stat" id="stat-hearts"><b></b><small>Leben</small></div>
+      <div class="stat fish" id="stat-fish"><b>FISCHSTAEBCHEN</b><small>Lvl 0</small></div>
+    </div>
+    <button id="btn-trophies" class="ghost-btn small">POKALE <span id="trophy-count">0/24</span></button>
+  </header>
+
+  <main id="stage">
+    <aside id="rail-left" class="rail">
+      <h2 class="rail-title">LADEN</h2>
+      <div id="shop-pieces"></div>
+      <div class="rail-note" id="budget-note"></div>
+      <button id="btn-clear" class="ghost-btn small wide">Brett leeren</button>
+    </aside>
+
+    <div id="board-col">
+      <div id="enemy-banner">
+        <div class="banner-name" id="enemy-name">DER PRAKTIKANT</div>
+        <div class="banner-blurb" id="enemy-blurb">Er hat das Regelheft dabei.</div>
+      </div>
+      <div id="board-wrap">
+        <div id="board"></div>
+        <div id="piece-layer"></div>
+        <div id="fx-layer"></div>
+      </div>
+      <div id="status-line"><span id="status-text">Stell deine Armee auf.</span></div>
+    </div>
+
+    <aside id="rail-right" class="rail">
+      <h2 class="rail-title">LAGE</h2>
+      <div class="gauge" id="gauge-material">
+        <div class="gauge-label">Material</div>
+        <div class="gauge-val" id="material-val">+0</div>
+      </div>
+      <div class="gauge" id="gauge-plies">
+        <div class="gauge-label">Zeit bis Matt</div>
+        <div class="gauge-val" id="plies-val">--</div>
+      </div>
+      <div class="gauge" id="gauge-eval">
+        <div class="gauge-label">Fisch denkt</div>
+        <div class="gauge-val" id="eval-val">...</div>
+      </div>
+      <div id="verdict" class="verdict"></div>
+      <div class="speed-row hidden" id="speed-row">
+        <span>Tempo</span>
+        <button class="spd" data-spd="1">1x</button>
+        <button class="spd active" data-spd="2">2x</button>
+        <button class="spd" data-spd="4">4x</button>
+        <button class="spd" data-spd="0">&raquo;|</button>
+      </div>
+    </aside>
+  </main>
+
+  <footer id="actionbar">
+    <button id="btn-start" class="big-btn">ANPFIFF</button>
+  </footer>
+</div>
+
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

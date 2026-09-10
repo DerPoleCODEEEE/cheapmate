@@ -1,0 +1,23 @@
+# Render Blueprint (optional - das Dashboard tut es auch).
+# Static Site = kein Server, kein Spindown, Free Tier reicht.
+# Stockfish laeuft als WASM im Browser des Spielers, nicht hier.
+services:
+  - type: web
+    name: cheapmate
+    runtime: static
+    staticPublishPath: .
+    buildCommand: ""
+    envVars:
+      # Es gibt nichts zu bauen. package.json enthaelt nur Test-Werkzeug.
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
+    headers:
+      # ACHTUNG Pfad-Syntax: /vendor/stockfish/* haette auch die .js-Datei
+      # erwischt und ihr faelschlich application/wasm verpasst.
+      # /**/*.wasm trifft nur verschachtelte .wasm-Dateien.
+      - path: /**/*.wasm
+        name: Content-Type
+        value: application/wasm
+      - path: /**/*.wasm
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
