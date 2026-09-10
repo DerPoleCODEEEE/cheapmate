@@ -8,18 +8,19 @@ export const STORY = {
 };
 
 // --- Intro cutscene ---------------------------------------------------------
-// Each shot: text, how long it holds (ms), and a visual cue for the renderer.
+// Each shot is one screen of text. The player advances them by clicking, so
+// nothing scrolls away before it has been read.
 export const INTRO = [
-  { fx: 'void',    ms: 900, lines: ['In 1997, a machine beat a man.'] },
-  { fx: 'void',    ms: 900, lines: ['In 2017, a machine beat every other machine.'] },
-  { fx: 'void',    ms: 1100, lines: ['Nothing has beaten one since.'] },
-  { fx: 'prime',   ms: 1700, lines: ['They called it', 'PRIME'] },
-  { fx: 'prime',   ms: 1500, lines: ['It does not blunder.', 'It does not tire.', 'It does not lose.'] },
-  { fx: 'fish',    ms: 1500, lines: ['You are not PRIME.', 'You are four hundred lines of an evaluation',
-                                     'function someone deleted in 2011.'] },
-  { fx: 'fish',    ms: 1300, lines: ['You are, technically, a fish.'] },
-  { fx: 'coins',   ms: 1500, lines: ['You will never out-calculate it.', 'But PRIME has no wallet.'] },
-  { fx: 'title',   ms: 2400, lines: ['CHEAPMATE'] }
+  { fx: 'void',  lines: ['In 1997, a machine beat a man.'] },
+  { fx: 'void',  lines: ['In 2017, a machine beat every other machine.'] },
+  { fx: 'void',  lines: ['Nothing has beaten one since.'] },
+  { fx: 'prime', lines: ['They called it', 'PRIME'] },
+  { fx: 'prime', lines: ['It does not blunder.', 'It does not tire.', 'It does not lose.'] },
+  { fx: 'fish',  lines: ['You are not PRIME.', 'You are four hundred lines of an evaluation',
+                         'function someone deleted in 2011.'] },
+  { fx: 'fish',  lines: ['You are, technically, a fish.'] },
+  { fx: 'coins', lines: ['You will never out-calculate it.', 'But PRIME has no wallet.'] },
+  { fx: 'title', lines: ['CHEAPMATE'] }
 ];
 
 // --- Wave structure ---------------------------------------------------------
@@ -66,15 +67,14 @@ export const BOSSES = [
     title: 'They Move Together',
     taunt: 'We do not wait. Neither should you.',
     defeat: 'One falls. The other stops moving entirely.',
-    // -16 Halbzuege waren im Test unzuverlaessig (mal Sieg, mal Timeout).
-    // -12 mit mehr Budget ist immer noch hektisch, aber fair.
-    // Gemessen: unter ~36 Material bekommt ein Fisch auf Skill 6 die beiden
-    // hier nie rechtzeitig matt. Deshalb viel Budget statt weniger Zuege.
+    // Measured: -16 half-moves was unreliable (sometimes a win, sometimes a
+    // timeout) and below ~36 material a skill-6 fish never mates these two in
+    // time. So: a milder clock penalty and a much bigger purse.
     mods: { ply: -12, budget: 26 },
     modText: '12 fewer half-moves, +$26. Buy big — this one has to die fast.',
     pieces: [
-      // Tuerme verbunden auf c2/d2. NICHT auf e2 -- das gaebe ueber die
-      // offene e-Linie sofort Schach gegen den Spielerkoenig auf e8.
+      // Rooks connected on c2/d2. NOT on e2 -- that would give immediate check
+      // to the player king on e8 down the open e-file.
       { type: 'k', square: 'g1' }, { type: 'r', square: 'c2' }, { type: 'r', square: 'd2' },
       { type: 'n', square: 'c3' }, { type: 'n', square: 'f3' },
       { type: 'p', square: 'f2' }, { type: 'p', square: 'g2' }, { type: 'p', square: 'h2' },
@@ -90,9 +90,9 @@ export const BOSSES = [
     mods: { budget: 34 },
     modText: 'Two queens. +$34, because otherwise this would be rude.',
     pieces: [
-      // Laeufer auf d3, NICHT c4: von c4 deckt er f7 und zusammen mit der Dame
-      // auf f3 steht Dxf7# schon vor deinem ersten Zug auf dem Brett. Ein Boss
-      // darf hart sein, aber nicht vor dem Anpfiff gewinnen.
+      // Bishop on d3, NOT c4: from c4 it defends f7, and together with the
+      // queen on f3 that is Qxf7# before you have made a single move. A boss
+      // may be brutal, but it must not win before the whistle.
       { type: 'k', square: 'b1' }, { type: 'q', square: 'd1' }, { type: 'q', square: 'f3' },
       { type: 'b', square: 'd3' },
       { type: 'p', square: 'a2' }, { type: 'p', square: 'b2' }, { type: 'p', square: 'c2' },
@@ -105,8 +105,8 @@ export const BOSSES = [
     title: 'Every Move Makes It Worse',
     taunt: 'I have very little. You have very little time.',
     defeat: 'It runs out of moves. Finally, something does.',
-    // Gemessen: -26 Halbzuege waren nicht zu schaffen, selbst mit gutem Fisch
-    // und dickem Material. -16 ist knapp, aber machbar.
+    // Measured: -26 half-moves was unbeatable even with a good fish and heavy
+    // material. -16 is tight but doable.
     mods: { ply: -16, budget: 28 },
     modText: 'A thin army, but 16 fewer half-moves. Speed is the whole puzzle.',
     pieces: [
