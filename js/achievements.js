@@ -1,128 +1,129 @@
-// Achievements. Jedes prueft gegen ein Ereignis-Objekt.
-// tier: 1 Tinte / 2 Silber / 3 Gold. hidden: Text erst nach Freischaltung sichtbar.
+// Achievements. Each one tests against an event payload.
+// tier: 1 ink / 2 silver / 3 gold. hidden: text stays secret until unlocked.
 
 export const ACHIEVEMENTS = [
-  // --- Fortschritt --------------------------------------------------------
-  { id: 'first_win',  name: 'ERSTER FISCHZUG',  tier: 1, icon: 'fish',
-    desc: 'Gewinne deine erste Runde.',
-    on: 'roundWon', test: (e, s) => s.roundsWon >= 1 },
-  { id: 'round5',     name: 'STAMMKUNDE',       tier: 1, icon: 'flag',
-    desc: 'Erreiche Runde 5.',
-    on: 'roundStart', test: (e) => e.round >= 5 },
-  { id: 'round10',    name: 'TIEFSEE',          tier: 2, icon: 'wave',
-    desc: 'Erreiche Runde 10.',
-    on: 'roundStart', test: (e) => e.round >= 10 },
-  { id: 'round15',    name: 'ABYSSAL',          tier: 3, icon: 'skull',
-    desc: 'Erreiche Runde 15.',
-    on: 'roundStart', test: (e) => e.round >= 15 },
+  // --- progress -----------------------------------------------------------
+  { id: 'first_win', name: 'FIRST CATCH', tier: 1, on: 'roundWon',
+    desc: 'Win your first fight.', test: (e, s) => s.roundsWon >= 1 },
+  { id: 'wave2', name: 'STILL FLOATING', tier: 1, on: 'roundStart',
+    desc: 'Reach wave 2.', test: e => e.wave >= 2 },
+  { id: 'wave4', name: 'DEEP WATER', tier: 2, on: 'roundStart',
+    desc: 'Reach wave 4.', test: e => e.wave >= 4 },
+  { id: 'wave6', name: 'THE ABYSS', tier: 3, on: 'roundStart',
+    desc: 'Reach wave 6 and look PRIME in the eye.', test: e => e.wave >= 6 },
 
-  // --- Sparsamkeit: die eigentliche Kunst ---------------------------------
-  { id: 'cheap12',    name: 'SPARFUCHS',        tier: 1, icon: 'coin',
-    desc: 'Gewinne eine Runde fuer weniger als 12$.',
-    on: 'roundWon', test: (e) => e.spent < 12 },
-  { id: 'cheap_solo', name: 'EINZELKAEMPFER',   tier: 2, icon: 'one',
-    desc: 'Gewinne eine Runde mit nur EINER gekauften Figur.',
-    on: 'roundWon', test: (e) => e.bought.length === 1 },
-  { id: 'rich',       name: 'LIQUIDE',          tier: 2, icon: 'coin',
-    desc: 'Habe 150$ gleichzeitig auf dem Konto.',
-    on: 'money', test: (e) => e.money >= 150 },
-  { id: 'frugal3',    name: 'SCHOTTENROCK',     tier: 3, icon: 'coin',
-    desc: 'Gewinne 3 Runden in Folge fuer je unter 20$.',
-    on: 'roundWon', test: (e, s) => s.frugalStreak >= 3 },
+  // --- bosses -------------------------------------------------------------
+  { id: 'boss_gatekeeper', name: 'THROUGH THE GATE', tier: 2, on: 'roundWon',
+    desc: 'Beat THE GATEKEEPER.', test: e => e.bossName === 'THE GATEKEEPER' },
+  { id: 'boss_twins', name: 'BROKEN PAIR', tier: 2, on: 'roundWon',
+    desc: 'Beat THE TWINS.', test: e => e.bossName === 'THE TWINS' },
+  { id: 'boss_collector', name: 'REPOSSESSED', tier: 2, on: 'roundWon',
+    desc: 'Beat THE COLLECTOR.', test: e => e.bossName === 'THE COLLECTOR' },
+  { id: 'boss_zugzwang', name: 'OUT OF MOVES', tier: 3, on: 'roundWon',
+    desc: 'Beat ZUGZWANG.', test: e => e.bossName === 'ZUGZWANG' },
+  { id: 'boss_mirror', name: 'NOTHING LEFT TO COPY', tier: 3, on: 'roundWon',
+    desc: 'Beat THE MIRROR.', test: e => e.bossName === 'THE MIRROR' },
+  { id: 'boss_prime', name: 'CHEAPMATE', tier: 3, on: 'roundWon',
+    desc: 'Beat PRIME. Finish the run.', test: e => e.bossName === 'PRIME' },
 
-  // --- Fisch-Level --------------------------------------------------------
-  { id: 'stick_win',  name: 'FISCHSTAEBCHEN-SIEG', tier: 2, icon: 'fish',
-    desc: 'Gewinne eine Runde mit Fisch-Level 0.',
-    on: 'roundWon', test: (e) => e.fishLevel === 0 },
-  { id: 'blind_hen',  name: 'BLINDES HUHN',     tier: 3, icon: 'fish',
-    desc: 'Gewinne Runde 5 oder spaeter mit Fisch-Level 0.',
-    on: 'roundWon', test: (e) => e.fishLevel === 0 && e.round >= 5 },
-  { id: 'lvl10',      name: 'DER AUFSTIEG',     tier: 2, icon: 'up',
-    desc: 'Bringe deinen Fisch auf Level 10.',
-    on: 'upgrade', test: (e) => e.fishLevel >= 10 },
-  { id: 'orca',       name: 'ORCA',             tier: 3, icon: 'crown',
-    desc: 'Bringe deinen Fisch auf Level 20.',
-    on: 'upgrade', test: (e) => e.fishLevel >= 20 },
+  // --- thrift: the actual skill of this game ------------------------------
+  { id: 'cheap12', name: 'PENNY PINCHER', tier: 1, on: 'roundWon',
+    desc: 'Win a fight for under $12.', test: e => e.spent < 12 },
+  { id: 'cheap_solo', name: 'LONE OPERATIVE', tier: 2, on: 'roundWon',
+    desc: 'Win with exactly one bought piece.', test: e => e.bought.length === 1 },
+  { id: 'freebie', name: 'PAID NOTHING', tier: 3, on: 'roundWon', hidden: true,
+    desc: 'Win a fight without spending a single dollar.', test: e => e.spent <= 0 },
+  { id: 'rich', name: 'LIQUID', tier: 2, on: 'money',
+    desc: 'Hold $200 at once.', test: e => e.money >= 200 },
+  { id: 'frugal3', name: 'TIGHT FISTED', tier: 3, on: 'roundWon',
+    desc: 'Win three fights in a row for under $20 each.', test: (e, s) => s.frugalStreak >= 3 },
 
-  // --- Tempo --------------------------------------------------------------
-  { id: 'blitz',      name: 'BLITZMATT',        tier: 2, icon: 'bolt',
-    desc: 'Setze in unter 12 Halbzuegen matt.',
-    on: 'roundWon', test: (e) => e.plies < 12 },
-  { id: 'photo',      name: 'ZIELFOTO',         tier: 3, icon: 'clock',
-    desc: 'Setze im allerletzten erlaubten Halbzug matt.',
-    on: 'roundWon', test: (e) => e.plies >= e.plyLimit - 1 },
-  { id: 'slow',       name: 'GEDULDSPROBE',     tier: 1, icon: 'clock',
-    desc: 'Setze nach mehr als 45 Halbzuegen matt.',
-    on: 'roundWon', test: (e) => e.plies > 45 },
+  // --- your fish ----------------------------------------------------------
+  { id: 'stick_win', name: 'FISH STICK VICTORY', tier: 2, on: 'roundWon',
+    desc: 'Win a fight at skill 0.', test: e => e.fishLevel === 0 },
+  { id: 'blind_hen', name: 'BLIND LUCK', tier: 3, on: 'roundWon',
+    desc: 'Win in wave 2 or later at skill 0.', test: e => e.fishLevel === 0 && e.wave >= 2 },
+  { id: 'underdog', name: 'UNDERDOG', tier: 3, on: 'roundWon', hidden: true,
+    desc: 'Beat a boss with a fish below skill 6.', test: e => e.isBoss && e.fishLevel < 6 },
+  { id: 'lvl10', name: 'THE ASCENT', tier: 2, on: 'upgrade',
+    desc: 'Get your fish to skill 10.', test: e => e.fishLevel >= 10 },
+  { id: 'orca', name: 'ORCA', tier: 3, on: 'upgrade',
+    desc: 'Get your fish to skill 20.', test: e => e.fishLevel >= 20 },
 
-  // --- Stil ---------------------------------------------------------------
-  { id: 'pawns_only', name: 'BAUERNAUFSTAND',   tier: 3, icon: 'pawn',
-    desc: 'Gewinne eine Runde mit ausschliesslich Bauern.',
-    on: 'roundWon', test: (e) => e.bought.length > 0 && e.bought.every(t => t === 'p') },
-  { id: 'queen_only', name: 'EINE DAME REICHT', tier: 3, icon: 'queen',
-    desc: 'Gewinne eine Runde mit genau einer Dame und sonst nichts.',
-    on: 'roundWon', test: (e) => e.bought.length === 1 && e.bought[0] === 'q' },
-  { id: 'cavalry',    name: 'REITERSTAFFEL',    tier: 2, icon: 'knight',
-    desc: 'Gewinne eine Runde mit vier Springern.',
-    on: 'roundWon', test: (e) => e.bought.filter(t => t === 'n').length >= 4 },
-  { id: 'towers',     name: 'TURMBAU ZU BABEL', tier: 2, icon: 'rook',
-    desc: 'Gewinne eine Runde mit drei oder mehr Tuermen.',
-    on: 'roundWon', test: (e) => e.bought.filter(t => t === 'r').length >= 3 },
+  // --- perks --------------------------------------------------------------
+  { id: 'perk1', name: 'REGULAR CUSTOMER', tier: 1, on: 'perk',
+    desc: 'Buy your first perk.', test: (e, s) => s.perkCount >= 1 },
+  { id: 'perk6', name: 'STACKED', tier: 2, on: 'perk',
+    desc: 'Own six perks at once.', test: (e, s) => s.perkCount >= 6 },
+  { id: 'perk12', name: 'UNFAIR', tier: 3, on: 'perk',
+    desc: 'Own twelve perks. The fish is now a problem.', test: (e, s) => s.perkCount >= 12 },
+  { id: 'bloodbath', name: 'BLOODBATH', tier: 2, on: 'roundWon', hidden: true,
+    desc: 'Earn $20 or more from captures in one fight.', test: e => (e.bounty || 0) >= 20 },
 
-  // --- Schmerz ------------------------------------------------------------
-  { id: 'toofast',    name: 'ZU SCHNELL',       tier: 1, icon: 'skull', hidden: true,
-    desc: 'Versuche, Weiss schon vor dem ersten Zug mattzusetzen. Nett gedacht.',
-    on: 'illegalSetup', test: (e) => e.reason === 'instantwin' },
-  { id: 'stalemate',  name: 'REMIS?! JETZT?!',  tier: 2, icon: 'skull', hidden: true,
-    desc: 'Beende eine Runde im Patt.',
-    on: 'roundLost', test: (e) => e.reason === 'draw' },
-  { id: 'broke',      name: 'INSOLVENT',        tier: 1, icon: 'coin', hidden: true,
-    desc: 'Starte eine Runde mit 0$ in der Tasche.',
-    on: 'roundStart', test: (e) => e.money === 0 },
-  { id: 'intern',     name: 'DER PRAKTIKANT LEBT', tier: 2, icon: 'skull', hidden: true,
-    desc: 'Verliere gegen DER PRAKTIKANT. Er wird es allen erzaehlen.',
-    on: 'roundLost', test: (e) => e.themeId === 'nackt' },
+  // --- tempo --------------------------------------------------------------
+  { id: 'blitz', name: 'SNAP MATE', tier: 2, on: 'roundWon',
+    desc: 'Mate in under 12 half-moves.', test: e => e.plies < 12 },
+  { id: 'photo', name: 'PHOTO FINISH', tier: 3, on: 'roundWon',
+    desc: 'Mate on the very last legal half-move.', test: e => e.plies >= e.plyLimit - 1 },
+  { id: 'overtime', name: 'ON APPEAL', tier: 2, on: 'roundWon', hidden: true,
+    desc: 'Win a fight through OVERTIME.', test: e => e.overtimeUsed },
 
-  // --- Meisterschaft ------------------------------------------------------
-  { id: 'flawless',   name: 'MAKELLOS',         tier: 3, icon: 'crown',
-    desc: 'Erreiche Runde 10 ohne ein einziges Herz zu verlieren.',
-    on: 'roundStart', test: (e, s) => e.round >= 10 && s.heartsLost === 0 }
+  // --- style --------------------------------------------------------------
+  { id: 'pawns_only', name: 'PEASANT REVOLT', tier: 3, on: 'roundWon',
+    desc: 'Win using nothing but pawns.', test: e => e.bought.length > 0 && e.bought.every(t => t === 'p') },
+  { id: 'queen_only', name: 'ONE QUEEN IS PLENTY', tier: 3, on: 'roundWon',
+    desc: 'Win with a single queen and nothing else.', test: e => e.bought.length === 1 && e.bought[0] === 'q' },
+  { id: 'cavalry', name: 'FOUR HORSEMEN', tier: 2, on: 'roundWon',
+    desc: 'Win a fight with four knights.', test: e => e.bought.filter(t => t === 'n').length >= 4 },
+
+  // --- pain ---------------------------------------------------------------
+  { id: 'toofast', name: 'TOO EAGER', tier: 1, on: 'illegalSetup', hidden: true,
+    desc: 'Try to mate White before it has moved once. Nice try.',
+    test: e => e.reason === 'instantwin' },
+  { id: 'stalemate', name: 'A DRAW? NOW?', tier: 2, on: 'roundLost', hidden: true,
+    desc: 'End a fight in stalemate.', test: e => e.reason === 'draw' },
+  { id: 'intern', name: 'THE INTERN LIVES', tier: 2, on: 'roundLost', hidden: true,
+    desc: 'Lose to THE INTERN. It will tell everyone.', test: e => e.themeId === 'intern' },
+
+  // --- mastery ------------------------------------------------------------
+  { id: 'flawless', name: 'FLAWLESS', tier: 3, on: 'roundStart',
+    desc: 'Reach wave 4 without losing a single heart.',
+    test: (e, s) => e.wave >= 4 && s.heartsLost === 0 }
 ];
 
-const KEY = 'cheapmate.achievements.v1';
+const KEY = 'cheapmate.achievements.v2';
 
 export class AchievementTracker {
   constructor(onUnlock) {
     this.onUnlock = onUnlock;
     this.unlocked = this.load();
-    this.stats = { roundsWon: 0, heartsLost: 0, frugalStreak: 0 };
+    this.stats = { roundsWon: 0, heartsLost: 0, frugalStreak: 0, perkCount: 0 };
   }
 
   load() {
     try { return new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); }
     catch (e) { return new Set(); }
   }
-  save() {
-    try { localStorage.setItem(KEY, JSON.stringify([...this.unlocked])); } catch (e) {}
-  }
+  save() { try { localStorage.setItem(KEY, JSON.stringify([...this.unlocked])); } catch (e) {} }
   reset() { this.unlocked = new Set(); this.save(); }
 
-  // Statistiken, die ueber Runden hinweg zaehlen
-  note(event, payload) {
+  note(event, p) {
     if (event === 'roundWon') {
       this.stats.roundsWon++;
-      this.stats.frugalStreak = payload.spent < 20 ? this.stats.frugalStreak + 1 : 0;
+      this.stats.frugalStreak = p.spent < 20 ? this.stats.frugalStreak + 1 : 0;
     }
     if (event === 'heartLost') this.stats.heartsLost++;
-    if (event === 'runStart') this.stats = { roundsWon: this.stats.roundsWon, heartsLost: 0, frugalStreak: 0 };
+    if (event === 'perk') this.stats.perkCount = p.perkCount || 0;
+    if (event === 'runStart') {
+      this.stats.heartsLost = 0; this.stats.frugalStreak = 0; this.stats.perkCount = 0;
+    }
   }
 
   fire(event, payload = {}) {
     this.note(event, payload);
     const newly = [];
     for (const a of ACHIEVEMENTS) {
-      if (a.on !== event) continue;
-      if (this.unlocked.has(a.id)) continue;
+      if (a.on !== event || this.unlocked.has(a.id)) continue;
       let ok = false;
       try { ok = !!a.test(payload, this.stats); } catch (e) { ok = false; }
       if (ok) { this.unlocked.add(a.id); newly.push(a); }
@@ -131,7 +132,5 @@ export class AchievementTracker {
     return newly;
   }
 
-  progress() {
-    return { done: this.unlocked.size, total: ACHIEVEMENTS.length };
-  }
+  progress() { return { done: this.unlocked.size, total: ACHIEVEMENTS.length }; }
 }
