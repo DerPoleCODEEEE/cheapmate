@@ -1,17 +1,19 @@
 /* ==========================================================================
    CHEAPMATE — black ink on paper. No colour anywhere; everything is
    linework, hatching and weight. Things are allowed to sit slightly crooked.
+
+   Layout rule: the header carries the name and nothing else. Everything you
+   need while playing is arranged around the board, with the dashboard strip
+   sitting directly underneath it.
    ========================================================================== */
 :root{
   --ink:#15130f;
-  --ink-soft:#57514608;
   --ink-mid:#4a453c;
   --paper:#f6f4ec;
-  --paper-2:#eceadf;
-  --w:min(66vh, 520px);
+  --w:min(58vh, 560px);
   --cell:calc(var(--w)/8);
   --pop:cubic-bezier(.34,1.56,.64,1);
-  --rail:196px;
+  --rail:186px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
@@ -34,25 +36,25 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace}
 
 /* ---------------------------- buttons ---------------------------------- */
 .big-btn{
-  font-size:clamp(24px,3.2vw,36px);padding:.14em .9em;background:var(--paper);
+  font-size:clamp(23px,2.9vw,34px);padding:.12em .95em;background:var(--paper);
   border:3px solid var(--ink);border-radius:14px 9px 16px 8px;
   box-shadow:4px 4px 0 var(--ink);transition:transform .09s, box-shadow .09s;
 }
 .big-btn:hover:not(:disabled){transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
 .big-btn:active:not(:disabled){transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
-.big-btn:disabled{opacity:.32;cursor:not-allowed;box-shadow:2px 2px 0 var(--ink)}
+.big-btn:disabled{opacity:.3;cursor:not-allowed;box-shadow:2px 2px 0 var(--ink)}
 .ghost-btn{
   background:transparent;border:2.5px solid var(--ink);border-radius:11px 7px 12px 6px;
-  padding:.24em .8em;box-shadow:2px 2px 0 var(--ink);transition:transform .08s,box-shadow .08s;
+  padding:.22em .8em;box-shadow:2px 2px 0 var(--ink);transition:transform .08s,box-shadow .08s;
 }
 .ghost-btn:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
 .ghost-btn:active:not(:disabled){transform:translate(2px,2px);box-shadow:0 0 0}
 .ghost-btn:disabled{opacity:.35;cursor:not-allowed}
-.ghost-btn.small{font-size:15px;padding:.16em .6em}
+.ghost-btn.small{font-size:15px;padding:.14em .6em}
 .ghost-btn.wide{width:100%;margin-top:6px}
 .icon-btn{
   background:transparent;border:2.5px solid var(--ink);border-radius:50% 46% 52% 48%;
-  width:36px;height:36px;display:grid;place-items:center;font-size:16px;line-height:1;
+  width:34px;height:34px;display:grid;place-items:center;font-size:15px;line-height:1;
   box-shadow:2px 2px 0 var(--ink);padding:0;
 }
 .icon-btn:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
@@ -81,7 +83,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace}
 .cinema{
   position:fixed;inset:0;z-index:200;background:#0b0a08;color:#f2efe6;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  animation:cineIn .5s ease;overflow:hidden;
+  animation:cineIn .5s ease;overflow:hidden;cursor:pointer;
 }
 .cinema.cine-out{animation:cineOut .7s ease forwards}
 @keyframes cineIn{from{opacity:0}}
@@ -95,8 +97,8 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace}
 .cine-prime svg{width:min(46vw,420px)}
 .cine-prime .prime-eye{animation:primeBlink 3.4s steps(1) infinite}
 @keyframes primeBlink{0%,92%{opacity:1}94%,98%{opacity:.15}}
-.cine-fish{animation:cineFishSwim 3.4s ease-in-out infinite}
-@keyframes cineFishSwim{0%,100%{transform:translateX(-16px) rotate(-3deg)}50%{transform:translateX(16px) rotate(3deg)}}
+.cine-fish{animation:cineFishSwim 3.6s ease-in-out infinite}
+@keyframes cineFishSwim{0%,100%{transform:translateX(-18px) rotate(-3deg)}50%{transform:translateX(18px) rotate(3deg)}}
 .cine-coins{position:relative;width:100%;height:100%}
 .cine-coins span{position:absolute;top:-70px;width:44px;animation:coinFall 2.4s linear infinite}
 .cine-coins span svg{width:100%}
@@ -105,125 +107,69 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace}
   letter-spacing:2px;animation:slam .5s var(--pop)}
 .cine-title h1 span{display:inline-block;transform:rotate(3deg)}
 @keyframes slam{0%{transform:scale(3) rotate(-9deg);opacity:0}70%{transform:scale(.95) rotate(1deg);opacity:1}100%{transform:scale(1)}}
-.cine-text{min-height:22vh;padding:0 6vw;text-align:center;max-width:900px;transition:opacity .28s}
+.cine-text{min-height:20vh;padding:0 6vw;text-align:center;max-width:900px;transition:opacity .24s}
 .cine-text.fade{opacity:0}
 .cine-line{font-size:clamp(19px,2.7vw,32px);margin:.22em 0;min-height:1.2em;letter-spacing:.4px}
+.cine-next{
+  position:absolute;bottom:calc(8vh + 22px);left:50%;transform:translateX(-50%);
+  font-size:15px;letter-spacing:3px;text-transform:uppercase;opacity:.55;
+  animation:blink 1.5s ease-in-out infinite;pointer-events:none;
+}
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:.75}}
 .cine-skip{
   position:absolute;right:20px;bottom:calc(8vh + 16px);z-index:3;background:transparent;
-  border:2px solid #f2efe6;color:#f2efe6;border-radius:10px 6px 11px 5px;padding:.2em .8em;font-size:16px;opacity:.65;
+  border:2px solid #f2efe6;color:#f2efe6;border-radius:10px 6px 11px 5px;
+  padding:.2em .8em;font-size:15px;opacity:.55;cursor:pointer;
 }
 .cine-skip:hover{opacity:1}
 
 /* ================================ HUD ==================================== */
-#hud{display:flex;align-items:center;gap:14px;padding:7px 16px;border-bottom:3px solid var(--ink);flex:0 0 auto;flex-wrap:wrap}
-.hud-logo{font-family:'Caveat',cursive;font-size:29px;transform:rotate(-1.5deg);white-space:nowrap}
+#hud{display:flex;align-items:center;gap:14px;padding:6px 16px;border-bottom:3px solid var(--ink);flex:0 0 auto}
+.hud-logo{font-family:'Caveat',cursive;font-size:30px;transform:rotate(-1.5deg);white-space:nowrap}
 .hud-logo span{display:inline-block;transform:rotate(2deg)}
-.hud-right{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
-
-.wave-track{display:flex;align-items:center;gap:9px;border:2.5px solid var(--ink);
-  border-radius:12px 7px 13px 6px;padding:2px 11px;box-shadow:2px 2px 0 var(--ink)}
-.wave-label{font-size:13px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-mid)}
-.wave-label b{font-size:19px;color:var(--ink)}
-.wave-dots{display:flex;gap:5px;align-items:center}
-.wdot{width:11px;height:11px;border:2.4px solid var(--ink);border-radius:50%}
-.wdot.done{background:var(--ink)}
-.wdot.now{animation:wpulse 1.1s ease-in-out infinite}
-.wdot.boss{width:15px;height:15px;border-radius:3px;transform:rotate(45deg)}
-@keyframes wpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.45)}}
-.wdot.boss.now{animation:wpulseBoss 1.1s ease-in-out infinite}
-@keyframes wpulseBoss{0%,100%{transform:rotate(45deg) scale(1)}50%{transform:rotate(45deg) scale(1.35)}}
-
-.stat{display:flex;align-items:center;gap:6px;border:2.5px solid var(--ink);
-  border-radius:11px 6px 12px 5px;padding:2px 10px;background:var(--paper);box-shadow:2px 2px 0 var(--ink)}
-.stat b{font-size:20px;line-height:1.1;display:block}
-.stat small{display:block;font-size:11px;color:var(--ink-mid);letter-spacing:.4px;text-transform:uppercase;line-height:1.1}
-.stat.fish b{font-size:15px;letter-spacing:.5px}
-.stat-ico{display:grid;place-items:center}
-.stat-ico svg{display:block;width:26px;height:26px}
-.stat.fish .stat-ico svg{width:46px;height:auto}
-.stat.pulse{animation:statpop .45s var(--pop)}
-@keyframes statpop{0%{transform:scale(1)}40%{transform:scale(1.2) rotate(-3deg)}100%{transform:scale(1)}}
-.stat.hearts b{display:flex;gap:2px}
-.heart-svg{width:21px;height:21px;display:block}
-.heart-svg.empty{opacity:.24}
-.heart-svg.breaking{animation:heartbreak .75s ease forwards}
-@keyframes heartbreak{0%{transform:scale(1)}22%{transform:scale(1.5) rotate(-15deg)}
-  55%{transform:scale(1.1) rotate(12deg)}100%{transform:scale(.8);opacity:.24}}
+.hud-tools{display:flex;gap:7px;align-items:center;margin-left:auto}
 
 /* =============================== STAGE =================================== */
-#stage{flex:1 1 auto;display:flex;align-items:flex-start;justify-content:center;gap:16px;padding:10px 16px;min-height:0}
+#stage{flex:1 1 auto;display:flex;align-items:center;justify-content:center;gap:18px;padding:8px 16px;min-height:0}
 .rail{width:var(--rail);flex:0 0 auto;display:flex;flex-direction:column;gap:6px;max-height:100%;overflow-y:auto;padding:2px}
 .rail-title{font-size:24px;margin:0 0 2px;transform:rotate(-1.2deg);border-bottom:2.5px solid var(--ink);line-height:1.1}
-.rail-title.mt{margin-top:12px}
 .rail-hint{font-size:13.5px;color:var(--ink-mid);min-height:2.4em}
 
 /* --------------------------- recruit rail ------------------------------- */
 .shop-item{display:flex;align-items:center;gap:7px;padding:3px 8px;background:var(--paper);
   border:2.5px solid var(--ink);border-radius:11px 7px 12px 6px;box-shadow:2px 2px 0 var(--ink);
-  cursor:pointer;transition:transform .08s,box-shadow .08s;user-select:none;position:relative}
+  cursor:pointer;transition:transform .08s,box-shadow .08s;user-select:none}
 .shop-item + .shop-item{margin-top:5px}
 .shop-item:hover:not(.broke){transform:translate(-1.5px,-1.5px);box-shadow:4px 4px 0 var(--ink)}
 .shop-item.selected{background:var(--ink);color:var(--paper);transform:translate(2px,2px);box-shadow:0 0 0}
 .shop-item.selected .si-price{color:var(--paper)}
 .shop-item.selected svg{filter:invert(1)}
 .shop-item.broke{opacity:.3;cursor:not-allowed}
-.si-icon{width:32px;height:32px;flex:0 0 auto;display:grid;place-items:center}
-.si-icon svg{width:32px;height:32px;display:block}
+.si-icon{width:31px;height:31px;flex:0 0 auto;display:grid;place-items:center}
+.si-icon svg{width:31px;height:31px;display:block}
 .si-name{flex:1;font-size:15px}
 .si-price{font-size:18px;font-weight:bold;white-space:nowrap}
 .si-free{font-size:12px;letter-spacing:1px;border:2px solid currentColor;border-radius:6px;padding:0 4px}
 
-/* ------------------------------ gauges ---------------------------------- */
-.gauge-row{display:flex;gap:6px}
-.gauge{flex:1;border:2.5px solid var(--ink);border-radius:11px 7px 12px 6px;padding:3px 8px;box-shadow:2px 2px 0 var(--ink)}
-.gauge-label{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-mid)}
-.gauge-val{font-size:21px;line-height:1.1}
-.verdict{font-size:14.5px;padding:7px 9px;border:2.5px dashed var(--ink);border-radius:12px 7px 13px 6px;min-height:56px;margin-top:6px}
-.verdict.bad{background:var(--ink);color:var(--paper);border-style:solid}
-.verdict.good{border-style:solid}
-
-/* ---------------------------- perk chips -------------------------------- */
-.perk-chips{display:flex;flex-wrap:wrap;gap:5px}
-.chips-empty{font-size:13px;color:var(--ink-mid)}
-.chip{display:flex;align-items:center;gap:4px;border:2.2px solid var(--ink);border-radius:9px 6px 10px 5px;
-  padding:1px 6px;font-size:12.5px;box-shadow:1.5px 1.5px 0 var(--ink);cursor:default}
-.chip svg{width:17px;height:17px;display:block}
-.chip b{font-size:12px}
-.chip.legendary{background:var(--ink);color:var(--paper)}
-.chip.legendary svg{filter:invert(1)}
-.chip.rare{box-shadow:1.5px 1.5px 0 var(--ink), inset 0 0 0 1.6px var(--paper), inset 0 0 0 3.4px var(--ink)}
-.chip.fresh{animation:chipIn .55s var(--pop)}
-@keyframes chipIn{0%{transform:scale(2) rotate(-12deg);opacity:0}70%{transform:scale(.94) rotate(2deg);opacity:1}100%{transform:scale(1)}}
-
-.speed-row{display:flex;align-items:center;gap:4px;font-size:13px;flex-wrap:wrap;margin-top:10px}
-.spd{background:transparent;border:2px solid var(--ink);border-radius:8px 5px 9px 4px;padding:0 7px;font-size:14px}
-.spd.active{background:var(--ink);color:var(--paper)}
-
-/* =============================== BOARD =================================== */
+/* ============================ BOARD COLUMN =============================== */
 #board-col{display:flex;flex-direction:column;align-items:center;gap:6px;flex:0 0 auto}
-#enemy-banner{text-align:center;min-height:62px;max-width:calc(var(--w) + 40px)}
-.banner-row{display:flex;align-items:baseline;gap:8px;justify-content:center;flex-wrap:wrap}
-.banner-kind{font-size:11.5px;letter-spacing:2.4px;border:2px solid var(--ink);border-radius:6px;padding:0 6px;color:var(--ink-mid)}
+#enemy-banner{text-align:center;min-height:58px;max-width:calc(var(--w) + 40px)}
+.banner-row{display:flex;align-items:baseline;gap:9px;justify-content:center;flex-wrap:wrap}
+.banner-kind{font-size:11.5px;letter-spacing:2.2px;border:2px solid var(--ink);border-radius:6px;padding:0 6px;color:var(--ink-mid)}
 .banner-kind.boss{background:var(--ink);color:var(--paper);animation:bossKick .6s var(--pop)}
 @keyframes bossKick{0%{transform:scale(1.9) rotate(-7deg)}100%{transform:scale(1)}}
 .banner-name{font-size:30px;line-height:1;transform:rotate(-.8deg)}
 .banner-blurb{font-size:14px;color:var(--ink-mid)}
 .banner-mod{font-size:13.5px;margin-top:3px;display:inline-block;border:2px dashed var(--ink);border-radius:9px 5px 10px 4px;padding:1px 9px}
 
-#board-area{display:flex;align-items:stretch;gap:9px}
-
-/* --------------------------- evaluation bar ----------------------------- */
-#evalbar{position:relative;width:26px;flex:0 0 auto;border:3px solid var(--ink);border-radius:6px 4px 6px 4px;
-  overflow:hidden;background:var(--paper);height:var(--w)}
+#board-area{display:flex;align-items:stretch;gap:8px}
+#evalbar{position:relative;width:24px;flex:0 0 auto;border:3px solid var(--ink);
+  border-radius:6px 4px 6px 4px;overflow:hidden;background:var(--paper);height:var(--w)}
 .eval-fill{position:absolute;left:0;right:0;bottom:0;height:50%;background:var(--ink);
   transition:height .35s cubic-bezier(.4,0,.2,1)}
 .eval-mid{position:absolute;left:0;right:0;top:50%;height:0;border-top:2px dashed var(--ink);opacity:.5}
-.eval-half{position:absolute;left:0;right:0;height:50%;pointer-events:none;display:grid;place-items:center}
-.eval-half.top{top:0} .eval-half.bottom{bottom:0}
-.eval-side{font-size:9px;letter-spacing:1.4px;writing-mode:vertical-rl;color:var(--ink-mid);opacity:.55}
-.eval-half.bottom .eval-side{color:var(--paper);opacity:.6;mix-blend-mode:difference}
 .eval-num{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-90deg);
-  font-size:13px;background:var(--paper);border:2px solid var(--ink);border-radius:5px;padding:0 4px;white-space:nowrap}
+  font-size:12.5px;background:var(--paper);border:2px solid var(--ink);border-radius:5px;padding:0 4px;white-space:nowrap}
 
 #board-wrap{position:relative;width:var(--w);height:var(--w);flex:0 0 auto}
 #board{position:absolute;inset:0;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);
@@ -231,10 +177,10 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace}
 .sq{position:relative}
 .sq.dark::before{content:'';position:absolute;inset:0;opacity:.38;
   background-image:repeating-linear-gradient(45deg,var(--ink) 0 2.4px,transparent 2.4px 8px)}
-.sq.zone::after{content:'';position:absolute;inset:2px;border:2px dashed var(--ink);opacity:.3;border-radius:6px}
+.sq.zone::after{content:'';position:absolute;inset:2px;border:2px dashed var(--ink);opacity:.28;border-radius:6px}
 .sq.beach::after{opacity:.45;border-style:dotted;border-width:3px}
 .sq.can-place{cursor:pointer}
-.sq.can-place::after{opacity:.75}
+.sq.can-place::after{opacity:.8}
 .sq.can-place:hover::after{opacity:1;border-style:solid;border-width:3px}
 .sq.hint::after{animation:hintpulse 1.15s ease-in-out infinite}
 @keyframes hintpulse{0%,100%{opacity:.85}50%{opacity:.3}}
@@ -254,19 +200,82 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace}
 @keyframes die{to{scale:.15;rotate:200deg;opacity:0}}
 .pc.checked svg{animation:shiver .28s linear 3}
 @keyframes shiver{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+.pc.instinct svg{animation:instinct .6s ease}
+@keyframes instinct{0%{filter:none}40%{filter:drop-shadow(0 0 10px var(--ink))}100%{filter:none}}
 
 .splat{position:absolute;width:var(--cell);height:var(--cell);pointer-events:none}
 .splat i{position:absolute;left:50%;top:50%;width:7px;height:7px;background:var(--ink);border-radius:50%;
   animation:splat .5s ease-out forwards}
 @keyframes splat{to{transform:translate(var(--dx),var(--dy)) scale(.15);opacity:0}}
-
 .coinfly{position:absolute;width:26px;pointer-events:none;animation:coinfly .8s ease-out forwards;z-index:5}
 .coinfly svg{width:100%}
 @keyframes coinfly{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-70px) scale(.5)}}
 
-#status-line{min-height:26px;font-size:16.5px;text-align:center;max-width:calc(var(--w) + 40px)}
+/* ============================= DASHBOARD ================================= */
+/* One strip under the board: wave, money, lives, engine, material, clock. */
+#dashboard{
+  display:flex;align-items:stretch;gap:0;width:calc(var(--w) + 32px);
+  border:3px solid var(--ink);border-radius:12px 8px 13px 7px;
+  box-shadow:3px 3px 0 var(--ink);background:var(--paper);overflow:hidden;
+}
+.dash-cell{
+  flex:1 1 0;min-width:0;padding:3px 8px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:0;text-align:center;
+}
+.dash-cell + .dash-cell{border-left:2.5px dashed var(--ink)}
+.dash-cell.wave{flex:1.15 1 0}
+.dash-cell.thrift{flex:1.25 1 0}
+.dash-cell.payout{flex:1.1 1 0}
+.dash-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-mid);line-height:1.2}
+.dash-value{display:flex;align-items:center;justify-content:center;gap:5px;line-height:1.1;flex-wrap:wrap}
+.dash-value b{font-size:21px;font-weight:normal}
+.dash-value small{font-size:11px;color:var(--ink-mid);width:100%;line-height:1}
+.dash-ico{display:grid;place-items:center}
+.dash-ico svg{display:block;width:21px;height:21px}
+.dash-ico.wide svg{width:40px;height:auto}
+
+.dash-cell.pulse{animation:dashpop .45s var(--pop)}
+@keyframes dashpop{0%{transform:scale(1)}40%{transform:scale(1.13) rotate(-2deg)}100%{transform:scale(1)}}
+#hearts-val{display:flex;gap:2px}
+.heart-svg{width:19px;height:19px;display:block}
+.heart-svg.empty{opacity:.22}
+.heart-svg.breaking{animation:heartbreak .75s ease forwards}
+@keyframes heartbreak{0%{transform:scale(1)}22%{transform:scale(1.5) rotate(-15deg)}
+  55%{transform:scale(1.1) rotate(12deg)}100%{transform:scale(.8);opacity:.22}}
+.wave-dots{display:flex;gap:4px;align-items:center}
+.wdot{width:9px;height:9px;border:2.2px solid var(--ink);border-radius:50%}
+.wdot.done{background:var(--ink)}
+.wdot.now{animation:wpulse 1.1s ease-in-out infinite}
+.wdot.boss{width:12px;height:12px;border-radius:2px;transform:rotate(45deg)}
+@keyframes wpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.45)}}
+.wdot.boss.now{animation:wpulseBoss 1.1s ease-in-out infinite}
+@keyframes wpulseBoss{0%,100%{transform:rotate(45deg) scale(1)}50%{transform:rotate(45deg) scale(1.3)}}
+
+.verdict{font-size:14.5px;padding:5px 12px;border:2.5px dashed var(--ink);
+  border-radius:12px 7px 13px 6px;width:calc(var(--w) + 32px);text-align:center;min-height:38px;
+  display:flex;align-items:center;justify-content:center}
+.verdict.bad{background:var(--ink);color:var(--paper);border-style:solid}
+.verdict.good{border-style:solid}
+
+#actionbar{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:2px}
+.speed-row{display:flex;align-items:center;gap:4px;font-size:13px;flex-wrap:wrap;justify-content:center}
+.spd{background:transparent;border:2px solid var(--ink);border-radius:8px 5px 9px 4px;padding:0 7px;font-size:14px}
+.spd.active{background:var(--ink);color:var(--paper)}
+#status-line{min-height:22px;font-size:15.5px;text-align:center;max-width:calc(var(--w) + 40px);color:var(--ink-mid)}
 #status-text.warn{background:var(--ink);color:var(--paper);padding:1px 9px;border-radius:8px 4px 9px 3px}
-#actionbar{flex:0 0 auto;display:flex;justify-content:center;gap:12px;padding:4px 0 12px}
+
+/* ---------------------------- perk chips -------------------------------- */
+.perk-chips{display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start}
+.chips-empty{font-size:13px;color:var(--ink-mid)}
+.chip{display:flex;align-items:center;gap:4px;border:2.2px solid var(--ink);border-radius:9px 6px 10px 5px;
+  padding:1px 6px;font-size:12.5px;box-shadow:1.5px 1.5px 0 var(--ink);cursor:default}
+.chip svg{width:17px;height:17px;display:block}
+.chip b{font-size:12px;font-weight:normal}
+.chip.legendary{background:var(--ink);color:var(--paper)}
+.chip.legendary svg{filter:invert(1)}
+.chip.rare{box-shadow:1.5px 1.5px 0 var(--ink), inset 0 0 0 1.6px var(--paper), inset 0 0 0 3.4px var(--ink)}
+.chip.fresh{animation:chipIn .55s var(--pop)}
+@keyframes chipIn{0%{transform:scale(2) rotate(-12deg);opacity:0}70%{transform:scale(.94) rotate(2deg);opacity:1}100%{transform:scale(1)}}
 
 /* =============================== MODALS ================================== */
 .modal-bg{position:fixed;inset:0;background:rgba(21,19,15,.66);display:grid;place-items:center;
@@ -286,7 +295,6 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace}
 .tally li.big{font-size:24px;border-bottom-width:3px}
 .tally li.sub{font-size:15px;color:var(--ink-mid);border-bottom-style:none;padding:0}
 
-/* boss intro card */
 .boss-card{text-align:center}
 .boss-card .boss-art{width:min(300px,60vw);margin:0 auto;animation:bossFloat 3s ease-in-out infinite}
 .boss-card .boss-art svg{width:100%}
@@ -296,7 +304,6 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace}
 .boss-card .boss-taunt{font-size:20px;margin:12px auto;max-width:520px;font-style:italic}
 .boss-card .boss-mod{display:inline-block;border:2.5px dashed var(--ink);border-radius:11px 6px 12px 5px;padding:4px 12px;font-size:15.5px}
 
-/* ------------------------------- shop ----------------------------------- */
 .shop-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
 .shop-money{font-size:26px;display:flex;align-items:center;gap:6px}
 .shop-money svg{width:26px;height:26px}
@@ -353,19 +360,84 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace}
   display:grid;place-items:center;font-size:16px}
 .trophy.tier3 .tr-badge{background:var(--ink);color:var(--paper)}
 .trophy .tr-name{font-family:'Caveat',cursive;font-size:19px;line-height:1.05}
-.trophy .tr-desc{font-size:12.5px;color:var(--ink-mid);line-height:1.2}
+.trophy .tr-desc{font-size:12.5px;color:var(--ink-mid)}
 
 /* ============================== RESPONSIVE =============================== */
-@media (max-width:1180px){ :root{--w:min(54vh,420px);--rail:172px} .banner-name{font-size:26px} }
-@media (max-width:920px){
+@media (max-width:1240px){ :root{--w:min(52vh,440px);--rail:166px} .banner-name{font-size:26px} }
+@media (max-width:1000px){
+  .dash-label{font-size:9px;letter-spacing:1px}
+  .dash-value b{font-size:18px}
+  .dash-cell.fish b{font-size:13px}
+}
+@media (max-width:900px){
   body{overflow:auto}
-  :root{--w:min(92vw,460px)}
+  :root{--w:min(92vw,470px)}
   .screen{position:static;min-height:100%}
   #stage{flex-direction:column;align-items:center;padding:8px}
-  .rail{width:min(92vw,470px);max-height:none}
+  .rail{width:min(92vw,500px);max-height:none}
   #shop-pieces{display:flex;gap:6px;flex-wrap:wrap}
-  .shop-item{flex:1 1 104px} .shop-item + .shop-item{margin-top:0}
+  .shop-item{flex:1 1 100px} .shop-item + .shop-item{margin-top:0}
   .si-name{display:none}
-  #hud{gap:8px} .hud-logo{font-size:24px}
+  #dashboard{flex-wrap:wrap}
+  .dash-cell{flex:1 1 33%;padding:4px}
+  .dash-cell + .dash-cell{border-left:none}
+  .dash-cell{border-top:2px dashed var(--ink)}
 }
 @media (prefers-reduced-motion:reduce){ *{animation-duration:.01ms !important;transition-duration:.01ms !important} }
+
+
+/* ====================== RIGHT RAIL: YOUR RUN ============================= */
+.rail-sub{font-family:'Caveat',cursive;font-size:20px;margin:12px 0 4px;
+  border-bottom:2px solid var(--ink);display:flex;justify-content:space-between;align-items:baseline}
+.rail-sub span{font-size:14px;color:var(--ink-mid)}
+
+.run-fish{display:flex;gap:8px;align-items:center;border:2.5px solid var(--ink);
+  border-radius:12px 7px 13px 6px;padding:5px 8px;box-shadow:2px 2px 0 var(--ink)}
+.run-fish-art{flex:0 0 auto;width:62px;display:grid;place-items:center}
+.run-fish-art svg{width:100%;height:auto}
+.run-fish-txt{flex:1;min-width:0}
+.run-fish-txt b{display:block;font-size:16px;line-height:1.1;letter-spacing:.5px}
+.run-fish-txt small{display:block;font-size:12px;color:var(--ink-mid)}
+.fish-bar{height:7px;border:2px solid var(--ink);border-radius:5px;overflow:hidden;margin-top:3px}
+.fish-bar-fill{height:100%;width:0;background:var(--ink);transition:width .5s var(--pop)}
+.run-fish.levelup{animation:dashpop .6s var(--pop)}
+
+.run-stats{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.run-stat{display:flex;justify-content:space-between;gap:6px;font-size:13.5px;
+  border-bottom:2px dotted var(--ink);padding:1px 0}
+.run-stat span:last-child{font-weight:bold;white-space:nowrap}
+
+.run-warn{margin-top:auto;padding-top:8px;font-size:12.5px;color:var(--ink-mid);
+  border-top:2.5px dashed var(--ink);line-height:1.3}
+.run-warn b{letter-spacing:2px;color:var(--ink)}
+
+/* ===================== THRIFT / PAYOUT ON THE DASHBOARD ================== */
+.dash-cell.thrift b{font-size:22px}
+.dash-cell.thrift small{font-size:10.5px;letter-spacing:1.4px;color:var(--ink-mid);width:100%}
+.dash-cell.thrift.hot{background:var(--ink);color:var(--paper)}
+.dash-cell.thrift.hot small{color:var(--paper);opacity:.75}
+.dash-cell.payout b{font-size:18px}
+
+/* ======================== ANIMATED PAYOUT =============================== */
+.payout-sheet{list-style:none;padding:0;margin:12px 0 4px;font-size:18px}
+.payout-sheet li{display:flex;justify-content:space-between;gap:12px;padding:3px 0;
+  border-bottom:2px dotted var(--ink);opacity:0;transform:translateX(-10px)}
+.payout-sheet li.in{animation:payIn .32s var(--pop) forwards}
+@keyframes payIn{to{opacity:1;transform:translateX(0)}}
+.payout-sheet li.mult{border-bottom-style:solid;border-bottom-width:2.5px;font-size:20px}
+.payout-sheet li.mult .pv{font-family:'Caveat',cursive;font-size:30px;line-height:1}
+.payout-sheet li.mult.big .pv{animation:multPop .5s var(--pop)}
+@keyframes multPop{0%{transform:scale(2.4) rotate(-8deg)}70%{transform:scale(.95)}100%{transform:scale(1)}}
+.payout-sheet li .pnote{display:block;font-size:12px;color:var(--ink-mid)}
+.payout-sheet li.total{border-bottom:none;font-family:'Caveat',cursive;font-size:40px;
+  margin-top:6px;align-items:baseline}
+.payout-sheet li.total .pv{font-size:52px}
+.payout-sheet li.total.in{animation:payTotal .55s var(--pop) forwards}
+@keyframes payTotal{0%{opacity:0;transform:scale(1.8) rotate(-3deg)}70%{opacity:1;transform:scale(.96)}100%{opacity:1;transform:scale(1)}}
+
+/* run-over screen */
+.dead-card{text-align:center}
+.dead-card .dead-fish{width:min(260px,55vw);margin:0 auto;filter:grayscale(1);opacity:.75;
+  animation:sink 2.4s ease-in-out infinite}
+.dead-card .dead-fish svg{width:100%;transform:rotate(180deg)}
+@keyframes sink{0%,100%{transform:translateY(-5px) rotate(-3deg)}50%{transform:translateY(7px) rotate(3deg)}}
