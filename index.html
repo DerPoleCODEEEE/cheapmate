@@ -35,29 +35,16 @@
 
   <header id="hud">
     <div class="hud-logo">CHEAP<span>MATE</span></div>
-
-    <div class="wave-track" id="wave-track">
-      <span class="wave-label">WAVE <b id="wave-num">1</b></span>
-      <span class="wave-dots" id="wave-dots"></span>
-    </div>
-
-    <div class="hud-right">
-      <div class="stat money" id="stat-money" title="Money">
-        <span class="stat-ico" id="money-ico"></span><b>55</b>
-      </div>
-      <div class="stat hearts" id="stat-hearts" title="Lives"><b></b></div>
-      <div class="stat fish" id="stat-fish" title="Your engine">
-        <span class="stat-ico" id="fish-ico"></span>
-        <span><b>FISH STICK</b><small>skill 0 &middot; 120ms</small></span>
-      </div>
-      <button id="btn-sound" class="icon-btn" title="Sound on/off">♪</button>
-      <button id="btn-trophies" class="icon-btn" title="Trophies">★<span id="trophy-count">0</span></button>
+    <div class="hud-tools">
+      <button id="btn-how2" class="icon-btn" title="How it works">?</button>
+      <button id="btn-sound" class="icon-btn" title="Sound on/off">&#9834;</button>
+      <button id="btn-trophies" class="icon-btn" title="Trophies">&#9733;<span id="trophy-count">0</span></button>
     </div>
   </header>
 
   <main id="stage">
 
-    <!-- ---------- LEFT: the shop rail ---------- -->
+    <!-- ---------- LEFT: buy pieces ---------- -->
     <aside id="rail-left" class="rail">
       <h2 class="rail-title">RECRUIT</h2>
       <div id="shop-pieces"></div>
@@ -65,11 +52,12 @@
       <button id="btn-clear" class="ghost-btn small wide">Clear board</button>
     </aside>
 
-    <!-- ---------- CENTRE: board + eval bar ---------- -->
+    <!-- ---------- CENTRE ---------- -->
     <div id="board-col">
+
       <div id="enemy-banner">
         <div class="banner-row">
-          <span class="banner-kind" id="enemy-kind">SKIRMISH</span>
+          <span class="banner-kind" id="enemy-kind">SKIRMISH 1/3</span>
           <span class="banner-name" id="enemy-name">THE INTERN</span>
         </div>
         <div class="banner-blurb" id="enemy-blurb">It brought the rulebook.</div>
@@ -77,14 +65,11 @@
       </div>
 
       <div id="board-area">
-        <div id="evalbar" title="Position evaluation, judged by a neutral full-strength engine">
-          <div class="eval-half top"><span class="eval-side">WHITE</span></div>
+        <div id="evalbar" title="Position evaluation by a neutral full-strength engine">
           <div class="eval-fill" id="eval-fill"></div>
           <div class="eval-mid"></div>
-          <div class="eval-half bottom"><span class="eval-side">YOU</span></div>
-          <div class="eval-num" id="eval-num">–</div>
+          <div class="eval-num" id="eval-num">&ndash;</div>
         </div>
-
         <div id="board-wrap">
           <div id="board"></div>
           <div id="piece-layer"></div>
@@ -92,34 +77,74 @@
         </div>
       </div>
 
+      <!-- THE DASHBOARD: one strip under the board. Wave, money, the bet you
+           are currently making, and the clock. Everything in one glance. -->
+      <div id="dashboard">
+        <div class="dash-cell wave">
+          <span class="dash-label">Wave</span>
+          <span class="dash-value"><b id="wave-num">1</b><span class="wave-dots" id="wave-dots"></span></span>
+        </div>
+        <div class="dash-cell" id="dash-money">
+          <span class="dash-label">Bank</span>
+          <span class="dash-value"><i class="dash-ico" id="money-ico"></i><b id="money-val">60</b></span>
+        </div>
+        <div class="dash-cell" id="dash-material">
+          <span class="dash-label">Material vs White</span>
+          <span class="dash-value"><b id="material-val">+0</b></span>
+        </div>
+        <div class="dash-cell" id="dash-moves">
+          <span class="dash-label">Moves left</span>
+          <span class="dash-value"><b id="plies-val">&ndash;</b></span>
+        </div>
+        <div class="dash-cell thrift" id="dash-thrift">
+          <span class="dash-label">Thrift multiplier</span>
+          <span class="dash-value"><b id="thrift-mult">&times;1.00</b><small id="thrift-name">&nbsp;</small></span>
+        </div>
+        <div class="dash-cell payout" id="dash-payout">
+          <span class="dash-label">If you win</span>
+          <span class="dash-value"><b id="payout-est">&ndash;</b></span>
+        </div>
+      </div>
+
+      <div id="verdict" class="verdict">Pick a piece, then click a square.</div>
+
+      <div id="actionbar">
+        <button id="btn-start" class="big-btn">START FIGHT</button>
+        <div class="speed-row hidden" id="speed-row">
+          <span>Playback</span>
+          <button class="spd" data-spd="1">1&times;</button>
+          <button class="spd active" data-spd="2">2&times;</button>
+          <button class="spd" data-spd="4">4&times;</button>
+          <button class="spd" data-spd="0">Skip</button>
+        </div>
+      </div>
+
       <div id="status-line"><span id="status-text">Build your army.</span></div>
     </div>
 
-    <!-- ---------- RIGHT: readouts + your build ---------- -->
+    <!-- ---------- RIGHT: everything you own ---------- -->
     <aside id="rail-right" class="rail">
-      <h2 class="rail-title">STATUS</h2>
-      <div class="gauge-row">
-        <div class="gauge"><div class="gauge-label">Material</div><div class="gauge-val" id="material-val">+0</div></div>
-        <div class="gauge"><div class="gauge-label">Moves left</div><div class="gauge-val" id="plies-val">–</div></div>
+      <h2 class="rail-title">YOUR RUN</h2>
+
+      <div class="run-fish" id="run-fish">
+        <div class="run-fish-art" id="fish-ico"></div>
+        <div class="run-fish-txt">
+          <b id="fish-name">FISH STICK</b>
+          <small id="fish-sub">skill 0 / 20</small>
+          <div class="fish-bar"><div class="fish-bar-fill" id="fish-bar"></div></div>
+        </div>
       </div>
-      <div id="verdict" class="verdict">Pick a piece, then click a square.</div>
 
-      <h2 class="rail-title mt">YOUR BUILD</h2>
-      <div id="perk-chips" class="perk-chips"><span class="chips-empty">No perks yet.</span></div>
+      <div class="run-stats" id="run-stats"></div>
 
-      <div class="speed-row hidden" id="speed-row">
-        <span>Playback</span>
-        <button class="spd" data-spd="1">1×</button>
-        <button class="spd active" data-spd="2">2×</button>
-        <button class="spd" data-spd="4">4×</button>
-        <button class="spd" data-spd="0">Skip</button>
+      <h3 class="rail-sub">PERKS <span id="perk-count">0</span></h3>
+      <div id="perk-chips" class="perk-chips"><span class="chips-empty">None yet. The Black Market opens after your first win.</span></div>
+
+      <div class="run-warn">
+        <b>PERMADEATH</b><br>One lost fight ends the run.
       </div>
     </aside>
   </main>
-
-  <footer id="actionbar">
-    <button id="btn-start" class="big-btn">START FIGHT</button>
-  </footer>
 </div>
 
 <div id="modal-root"></div>
