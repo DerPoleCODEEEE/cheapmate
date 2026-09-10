@@ -1,11 +1,11 @@
-// Prozeduraler Gegner-Generator mit Themen. Deterministisch ueber Seed.
-import { VALUE, buildFen, FILES, sq, PLAYER_KING_SQUARE } from './rules.js';
+// Procedural enemy generator with themes. Deterministic from a seed.
+import { VALUE, buildFen, FILES, PLAYER_KING_SQUARE } from './rules.js';
 import { Chess, validateFen } from '../vendor/chess.js';
 
-// --- Seeded RNG (mulberry32) --------------------------------------------
+// --- Seeded RNG (mulberry32) ------------------------------------------------
 export function rng(seed) {
-  // Seed erst durchmischen (splitmix32), sonst korrelieren die ERSTEN Ausgaben
-  // benachbarter Seeds stark -> immer dasselbe Thema. Hat uns echt erwischt.
+  // Mix the seed first (splitmix32). Without this the FIRST outputs of nearby
+  // seeds correlate badly and every round picks the same theme. It got us.
   let a = (seed >>> 0);
   a = Math.imul(a ^ (a >>> 16), 0x21f0aaad);
   a = Math.imul(a ^ (a >>> 15), 0x735a2d97);
@@ -16,14 +16,14 @@ export function rng(seed) {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  next(); next(); next(); // warmlaufen
+  next(); next(); next();   // warm up
   return next;
 }
 const pick = (r, arr) => arr[Math.floor(r() * arr.length)];
 
-// --- Themen --------------------------------------------------------------
-// weight: Wahrscheinlichkeit. tier: ab welcher Runde verfuegbar.
-// build(budget): gibt Figurenliste zurueck, die ungefaehr `budget` Materialwert hat.
+// --- Themes -----------------------------------------------------------------
+// weight: how often it shows up. tier: from which wave it can appear.
+// build(budget): a piece list worth roughly `budget` in material.
 export const THEMES = [
   {
     id: 'intern', name: 'THE INTERN', tier: 0, weight: 3,
@@ -72,28 +72,26 @@ export const THEMES = [
   }
 ];
 
-// Fuellt bis Budget erreicht ist, zyklisch durch das Rezept.
-function fill(budget, recipe, r) {
+// Fills up to the budget, cycling through the recipe.
+function fill(budget, recipe) {
   const out = [];
   let spent = 0, i = 0, guard = 0;
   while (spent < budget && guard++ < 64) {
     const t = recipe[i % recipe.length];
     i++;
     if (spent + VALUE[t] > budget + 1) {
-      // passt nicht mehr -> versuche billigere Figur
       if (spent + 1 <= budget + 1 && VALUE.p <= budget - spent + 1) { out.push('p'); spent += 1; continue; }
       break;
     }
     out.push(t); spent += VALUE[t];
   }
-  // Max 15 Nicht-Koenig-Figuren, max 8 Bauern
   const pawns = out.filter(x => x === 'p');
   const rest = out.filter(x => x !== 'p');
-  return [...rest.slice(0, 7), ...pawns.slice(0, 8)];
+  return [...rest.slice(0, 7), ...pawns.slice(0, 8)];   // max 15 non-king, max 8 pawns
 }
 
-// --- Platzierung ---------------------------------------------------------
-// Gegner ist WEISS und steht auf Reihe 1-4. Koenig auf Reihe 1.
+// --- Placement --------------------------------------------------------------
+// The enemy is WHITE and lives on ranks 1-4, king on rank 1.
 function placeEnemy(types, r) {
   const used = new Set();
   const pieces = [];
@@ -105,7 +103,6 @@ function placeEnemy(types, r) {
     return s;
   };
 
-  // Koenig zuerst: bevorzugt "rochiert" wirkende Ecken
   const kingSq = take(['b1', 'c1', 'g1', 'h1', 'e1', 'd1', 'a1', 'f1']);
   pieces.push({ type: 'k', color: 'w', square: kingSq });
 
@@ -116,38 +113,26 @@ function placeEnemy(types, r) {
 
   for (const t of types) {
     let s = null;
-    if (t === 'p') {
-      s = take([...rank2, ...rank3]) || take(rank4);
-    } else if (t === 'r') {
-      s = take([...rank1, ...rank2]);
-    } else {
-      s = take([...rank2, ...rank1, ...rank3]) || take(rank4);
-    }
+    if (t === 'p') s = take([...rank2, ...rank3]) || take(rank4);
+    else if (t === 'r') s = take([...rank1, ...rank2]);
+    else s = take([...rank2, ...rank1, ...rank3]) || take(rank4);
     if (s) pieces.push({ type: t, color: 'w', square: s });
   }
   return pieces;
 }
 
-// --- Legalitaets-Check ---------------------------------------------------
-export function kingsAdjacent(a, b) {
-  const fa = a.charCodeAt(0), ra = +a[1], fb = b.charCodeAt(0), rb = +b[1];
-  return Math.abs(fa - fb) <= 1 && Math.abs(ra - rb) <= 1;
-}
-
-// --- Hauptfunktion -------------------------------------------------------
-// Eine Gegnerstellung ist nur brauchbar, wenn sie auf dem sonst leeren Brett
-// den Spielerkoenig NICHT schon angreift. Sonst startet der Spieler im Schach
-// (oder gleich matt) und die Platzierungsphase ist reine Schadensbegrenzung.
+// --- Legality ---------------------------------------------------------------
+// A generated position is only usable if, on an otherwise empty board, it does
+// NOT already attack the player's king. Otherwise you start in check (or mated)
+// and the placement phase is pure damage control.
 export function enemySetupIsSane(pieces) {
   const withKing = [...pieces, { type: 'k', color: 'b', square: PLAYER_KING_SQUARE }];
   const fen = buildFen(withKing, 'w');
   if (!validateFen(fen).ok) return false;
   let c;
   try { c = new Chess(fen); } catch (e) { return false; }
-  // Weiss ist am Zug, also darf SCHWARZ (du) nicht im Schach stehen.
   if (c.isAttacked(PLAYER_KING_SQUARE, 'w')) return false;
-  // Weiss darf nicht schon feststecken -- sonst ist die Runde vorbei bevor sie anfaengt.
-  if (c.moves().length === 0) return false;
+  if (c.moves().length === 0) return false;   // White must have a move
   return true;
 }
 
@@ -172,15 +157,14 @@ export function generateEnemy(round, seed) {
     };
     if (enemySetupIsSane(pieces)) return last;
   }
-  // Notbremse: alle schlagenden Linien auf e1 raeumen
-  last.pieces = last.pieces.filter(p => p.type === 'k' || p.square[0] !== 'e');   // e-Linie raeumen
+  // Last resort: clear the e-file so nothing stares at the player's king.
+  last.pieces = last.pieces.filter(p => p.type === 'k' || p.square[0] !== 'e');
   last.material = last.pieces.reduce((s, p) => s + (VALUE[p.type] || 0), 0);
   return last;
 }
 
-// Gegner-Material pro Runde. Bewusst flach am Anfang.
-// Bewusst SEHR flach am Anfang: mit Fisch-Level 0 spielt deine Seite grauenhaft,
-// da muss der Gegner fast nichts koennen. Ab Runde 6 zieht die Kurve an.
+// Enemy material per fight. Deliberately very flat at the start: at fish level
+// 0 your side plays appallingly, so the enemy must be almost nothing.
 export function enemyMaterialForRound(round) {
   const table = [0, 2, 3, 5, 7, 9, 12, 15, 18, 21, 24, 28, 32, 36, 40, 44];
   if (round < table.length) return table[round];
