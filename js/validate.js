@@ -1,19 +1,19 @@
-// Stellungspruefung vor dem Anpfiff.
-// Du bist Schwarz, WEISS zieht zuerst. Daraus folgt:
-//  - dein (schwarzer) Koenig darf NICHT im Schach stehen (du bist nicht am Zug)
-//  - Weiss DARF im Schach stehen -- Weiss ist am Zug und muss reagieren.
-//    Genau das ist der Trick: du darfst Matt drohen, Weiss darf sich wehren.
-//  - Weiss darf aber nicht schon matt oder patt sein, sonst waere die Runde
-//    vorbei, bevor ein Zug faellt.
+// Pre-fight position check.
+// You are Black, WHITE moves first. Therefore:
+//  - your (black) king must NOT be in check, because you are not to move
+//  - White MAY be in check -- it is to move and has to answer. That is the
+//    whole trick: you may threaten mate, White always gets a reply.
+//  - White must not already be mated or stalemated, or the fight is over
+//    before a single move is played.
 import { Chess, validateFen } from '../vendor/chess.js';
 import { buildFen, PLAYER_KING_SQUARE } from './rules.js';
 
 export const REASONS = {
-  ok:         { ok: true,  msg: 'Bereit.' },
-  badfen:     { ok: false, msg: 'Diese Stellung ergibt keinen Sinn.' },
-  selfcheck:  { ok: false, msg: 'Dein Koenig steht im Schach, obwohl Weiss am Zug ist. Illegal.' },
-  instantwin: { ok: false, msg: 'Weiss steht schon matt. So billig gibt es das nicht - stell es anders auf.' },
-  instantdraw:{ ok: false, msg: 'Weiss kann sich nicht ruehren. Das waere Patt, also kein Sieg.' }
+  ok:          { ok: true,  msg: 'Ready.' },
+  badfen:      { ok: false, msg: 'This position makes no sense.' },
+  selfcheck:   { ok: false, msg: 'Your king is in check while White is to move. Illegal.' },
+  instantwin:  { ok: false, msg: 'White is already mated. Not that cheap — build it differently.' },
+  instantdraw: { ok: false, msg: 'White cannot move at all. That is stalemate, so no win.' }
 };
 
 export function validateSetup(enemyPieces, playerPieces) {
@@ -39,10 +39,9 @@ export function validateSetup(enemyPieces, playerPieces) {
   };
 }
 
-// Weiss zieht zuerst. Wenn Weiss sofort mattsetzen kann, ist die Runde vorbei,
-// bevor dein Fisch einen Zug macht -- und der Spieler sieht das nicht von
-// allein. Wir sperren es nicht (das Vermeiden ist Teil des Puzzles), aber wir
-// warnen deutlich.
+// White moves first. If White can mate immediately the fight is over before
+// your fish touches a piece -- and the player cannot see that unaided. We do
+// not block it (avoiding it is part of the puzzle) but we warn loudly.
 export function whiteHasMateInOne(chess) {
   for (const mv of chess.moves()) {
     chess.move(mv);
