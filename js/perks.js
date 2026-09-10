@@ -1,18 +1,23 @@
 // ============================================================================
 // PERKS - the Black Market. Permanent, stacking, and deliberately unfair.
-// The whole point is that a long run should end with you absurdly overpowered.
+// A long run should end with you absurdly overpowered.
 //
 // Every perk declares WHERE it hooks in, so game.js stays readable:
-//   price       : { type: -1 }        cheaper pieces
-//   freeEach    : { p: 1 }            free placement credits every round
-//   income      : +N per won round
-//   refund      : fraction of spend returned on a win
-//   perCapture  : $ per piece your side takes
-//   skill       : { flat, opening, lowPieces, boss }   engine skill bonuses
-//   heartGuard  : first loss per wave costs no heart
-//   healOnBoss  : heal 1 heart after a boss win
-//   overtime    : win on timeout if you are winning by this much (centipawns)
-//   beachhead   : how many pieces may go on the enemy half (rank 4)
+//   price       : { type: -1 }      cheaper pieces
+//   freeEach    : { p: 1 }          free placement credits every round
+//   purse       : +N flat per win
+//   refund      : fraction of your spend returned on a win
+//   lootMult    : multiplies the loot payout
+//   salvageRate : $ per material point of your surviving pieces (default .5)
+//   thrift      : added to the thrift multiplier
+//   speed       : added to the speed multiplier
+//   skill       : { opening, lowPieces, boss }  engine skill bonuses
+//   overtime    : win on timeout if you are ahead by this much (centipawns)
+//   beachhead   : how many pieces may go on rank 4
+//
+// NOTE ON FREE PIECES: they are free in money but they still count as
+// material, so they push your THRIFT multiplier down. You never have to
+// place them. That is the point -- it is a real decision, not a freebie.
 // ============================================================================
 
 export const RARITY = {
@@ -22,18 +27,30 @@ export const RARITY = {
 };
 
 export const PERKS = [
-  // --- money ---------------------------------------------------------------
-  { id: 'bloodmoney', name: 'BLOOD MONEY', rarity: 'rare', cost: 30, icon: 'coin',
-    desc: 'Every piece your side captures pays $2. Violence, monetised.',
-    effect: { perCapture: 2 }, max: 3 },
+  // --- multipliers ---------------------------------------------------------
+  { id: 'accountant', name: 'THE ACCOUNTANT', rarity: 'legendary', cost: 55, icon: 'coin',
+    desc: '+0.25 to your THRIFT multiplier, always. The single best money perk.',
+    effect: { thrift: 0.25 }, max: 2 },
 
-  { id: 'scavenger', name: 'SCAVENGER', rarity: 'rare', cost: 34, icon: 'coin',
-    desc: 'Win a fight and 40% of what you spent comes back.',
-    effect: { refund: 0.4 }, max: 1 },
+  { id: 'headhunter', name: 'HEADHUNTER', rarity: 'rare', cost: 30, icon: 'skull',
+    desc: 'Loot pays double. Every enemy piece you take is worth twice as much.',
+    effect: { lootMult: 2 }, max: 2 },
+
+  { id: 'undertaker', name: 'THE UNDERTAKER', rarity: 'rare', cost: 36, icon: 'coin',
+    desc: 'Your surviving pieces refund their FULL value instead of half.',
+    effect: { salvageRate: 1.0 }, max: 1 },
+
+  { id: 'stopwatch', name: 'STOPWATCH', rarity: 'rare', cost: 32, icon: 'clock',
+    desc: '+0.15 to your SPEED multiplier. Fast mates pay even better.',
+    effect: { speed: 0.15 }, max: 2 },
 
   { id: 'dividends', name: 'DIVIDENDS', rarity: 'common', cost: 26, icon: 'coin',
-    desc: '+$12 every round you win. Boring. Excellent.',
-    effect: { income: 12 }, max: 3 },
+    desc: '+$12 on the purse every win, before multipliers. Boring. Excellent.',
+    effect: { purse: 12 }, max: 3 },
+
+  { id: 'scavenger', name: 'SCAVENGER', rarity: 'rare', cost: 34, icon: 'coin',
+    desc: 'Win and 40% of what you spent comes straight back.',
+    effect: { refund: 0.4 }, max: 1 },
 
   // --- free pieces: the snowball ------------------------------------------
   { id: 'pawnfactory', name: 'PAWN FACTORY', rarity: 'common', cost: 24, icon: 'pawn',
@@ -86,15 +103,6 @@ export const PERKS = [
     desc: 'Out of moves but winning by six or more? You win anyway.',
     effect: { overtime: 600 }, max: 1 },
 
-  // --- defence -------------------------------------------------------------
-  { id: 'insurance', name: 'INSURANCE', rarity: 'rare', cost: 40, icon: 'heart',
-    desc: 'The first loss in each wave costs you no heart.',
-    effect: { heartGuard: true }, max: 1 },
-
-  { id: 'secondwind', name: 'SECOND WIND', rarity: 'rare', cost: 46, icon: 'heart',
-    desc: 'Beat a boss, get a heart back.',
-    effect: { healOnBoss: 1 }, max: 1 },
-
   // --- placement -----------------------------------------------------------
   { id: 'beachhead', name: 'BEACHHEAD', rarity: 'legendary', cost: 54, icon: 'flag',
     desc: 'You may place one piece on rank 4 - inside enemy territory.',
@@ -103,14 +111,12 @@ export const PERKS = [
 
 export const PERK_BY_ID = Object.fromEntries(PERKS.map(p => [p.id, p]));
 
-// --- Angebot wuerfeln -------------------------------------------------------
+// --- roll an offer ----------------------------------------------------------
 export function rollOffer(owned, rand, count = 3) {
   const bag = [];
   for (const p of PERKS) {
-    const have = owned[p.id] || 0;
-    if (have >= (p.max || 1)) continue;
-    const w = RARITY[p.rarity].weight;
-    for (let i = 0; i < w; i++) bag.push(p);
+    if ((owned[p.id] || 0) >= (p.max || 1)) continue;
+    for (let i = 0; i < RARITY[p.rarity].weight; i++) bag.push(p);
   }
   const out = [];
   const used = new Set();
@@ -124,12 +130,14 @@ export function rollOffer(owned, rand, count = 3) {
   return out;
 }
 
-// --- Alle Effekte eines Inventars zu einem Bonus-Objekt zusammenrechnen -----
+// --- fold an inventory into one bonus object --------------------------------
 export function totals(owned) {
   const t = {
-    priceAll: 0, priceSet: {}, freeEach: {}, income: 0, refund: 0, perCapture: 0,
+    priceAll: 0, priceSet: {}, freeEach: {},
+    purse: 0, refund: 0, lootMult: 1, salvageRate: null,
+    thrift: 0, speed: 0,
     skillOpening: 0, openingPlies: 0, skillLowPieces: 0, skillBoss: 0,
-    heartGuard: false, healOnBoss: 0, overtime: 0, beachhead: 0
+    overtime: 0, beachhead: 0
   };
   for (const [id, n] of Object.entries(owned)) {
     const p = PERK_BY_ID[id];
@@ -137,19 +145,23 @@ export function totals(owned) {
     const e = p.effect;
     if (e.priceAll) t.priceAll += e.priceAll * n;
     if (e.priceSet) for (const [k, v] of Object.entries(e.priceSet))
-      t.priceSet[k] = Math.min(t.priceSet[k] ?? Infinity, v);
+      t.priceSet[k] = Math.min(t.priceSet[k] == null ? Infinity : t.priceSet[k], v);
     if (e.freeEach) for (const [k, v] of Object.entries(e.freeEach))
       t.freeEach[k] = (t.freeEach[k] || 0) + v * n;
-    if (e.income) t.income += e.income * n;
+    if (e.purse) t.purse += e.purse * n;
     if (e.refund) t.refund = Math.max(t.refund, e.refund);
-    if (e.perCapture) t.perCapture += e.perCapture * n;
+    if (e.lootMult) t.lootMult *= Math.pow(e.lootMult, n);
+    if (e.salvageRate) t.salvageRate = Math.max(t.salvageRate || 0, e.salvageRate);
+    if (e.thrift) t.thrift += e.thrift * n;
+    if (e.speed) t.speed += e.speed * n;
     if (e.skill) {
-      if (e.skill.opening) { t.skillOpening += e.skill.opening * n; t.openingPlies = Math.max(t.openingPlies, e.skill.openingPlies || 0); }
+      if (e.skill.opening) {
+        t.skillOpening += e.skill.opening * n;
+        t.openingPlies = Math.max(t.openingPlies, e.skill.openingPlies || 0);
+      }
       if (e.skill.lowPieces) t.skillLowPieces += e.skill.lowPieces * n;
       if (e.skill.boss) t.skillBoss += e.skill.boss * n;
     }
-    if (e.heartGuard) t.heartGuard = true;
-    if (e.healOnBoss) t.healOnBoss += e.healOnBoss * n;
     if (e.overtime) t.overtime = Math.max(t.overtime, e.overtime);
     if (e.beachhead) t.beachhead += e.beachhead * n;
   }
