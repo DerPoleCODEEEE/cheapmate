@@ -32,5 +32,23 @@ export function validateSetup(enemyPieces, playerPieces) {
       ? { ...REASONS.instantwin, fen }
       : { ...REASONS.instantdraw, fen };
   }
-  return { ...REASONS.ok, fen, chess, givesCheck: chess.isCheck() };
+  return {
+    ...REASONS.ok, fen, chess,
+    givesCheck: chess.isCheck(),
+    whiteMateIn1: whiteHasMateInOne(chess)
+  };
+}
+
+// Weiss zieht zuerst. Wenn Weiss sofort mattsetzen kann, ist die Runde vorbei,
+// bevor dein Fisch einen Zug macht -- und der Spieler sieht das nicht von
+// allein. Wir sperren es nicht (das Vermeiden ist Teil des Puzzles), aber wir
+// warnen deutlich.
+export function whiteHasMateInOne(chess) {
+  for (const mv of chess.moves()) {
+    chess.move(mv);
+    const mate = chess.isCheckmate();
+    chess.undo();
+    if (mate) return mv;
+  }
+  return null;
 }
