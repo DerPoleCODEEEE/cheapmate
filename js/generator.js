@@ -26,48 +26,48 @@ const pick = (r, arr) => arr[Math.floor(r() * arr.length)];
 // build(budget): gibt Figurenliste zurueck, die ungefaehr `budget` Materialwert hat.
 export const THEMES = [
   {
-    id: 'nackt', name: 'DER PRAKTIKANT', tier: 0, weight: 3,
-    blurb: 'Er hat das Regelheft dabei.',
+    id: 'intern', name: 'THE INTERN', tier: 0, weight: 3,
+    blurb: 'It brought the rulebook.',
     build: (b, r) => fill(b, ['p', 'p', 'p', 'n'], r)
   },
   {
-    id: 'wall', name: 'DIE MAUER', tier: 0, weight: 4,
-    blurb: 'Bauern. Sehr viele Bauern.',
+    id: 'wall', name: 'THE WALL', tier: 0, weight: 4,
+    blurb: 'Pawns. So many pawns.',
     build: (b, r) => fill(b, ['p', 'p', 'p', 'p', 'p', 'b'], r)
   },
   {
-    id: 'reiterei', name: 'DIE REITEREI', tier: 1, weight: 3,
-    blurb: 'Springer sind fuer schwache Fische die Hoelle.',
+    id: 'cavalry', name: 'THE CAVALRY', tier: 1, weight: 3,
+    blurb: 'Knights are hell for a stupid fish.',
     build: (b, r) => fill(b, ['n', 'n', 'p', 'n', 'p'], r)
   },
   {
-    id: 'tuerme', name: 'DIE ZWILLINGSTUERME', tier: 1, weight: 3,
-    blurb: 'Sie stehen verbunden auf der siebten Reihe.',
+    id: 'towers', name: 'THE TOWERS', tier: 1, weight: 3,
+    blurb: 'Connected, patient, and very square.',
     build: (b, r) => fill(b, ['r', 'r', 'p', 'p', 'p'], r)
   },
   {
-    id: 'laeufer', name: 'DAS LAEUFERPAAR', tier: 1, weight: 3,
-    blurb: 'Zwei Diagonalen, ein Problem.',
+    id: 'bishops', name: 'THE BISHOP PAIR', tier: 1, weight: 3,
+    blurb: 'Two diagonals, one problem.',
     build: (b, r) => fill(b, ['b', 'b', 'p', 'p', 'n'], r)
   },
   {
-    id: 'igel', name: 'DER IGEL', tier: 2, weight: 2,
-    blurb: 'Kompakt, stachelig, geduldig.',
+    id: 'hedgehog', name: 'THE HEDGEHOG', tier: 2, weight: 2,
+    blurb: 'Compact, spiky, patient.',
     build: (b, r) => fill(b, ['p', 'p', 'p', 'p', 'n', 'b', 'r'], r)
   },
   {
-    id: 'bestie', name: 'DIE BESTIE', tier: 2, weight: 2,
-    blurb: 'Sie hat eine Dame. Du hast ein Problem.',
+    id: 'beast', name: 'THE BEAST', tier: 2, weight: 2,
+    blurb: 'It has a queen. You have a problem.',
     build: (b, r) => fill(b, ['q', 'p', 'p', 'p'], r)
   },
   {
-    id: 'schwarm', name: 'DER SCHWARM', tier: 3, weight: 2,
-    blurb: 'Alles gleichzeitig, nichts davon gut.',
+    id: 'swarm', name: 'THE SWARM', tier: 3, weight: 2,
+    blurb: 'Everything at once, none of it good.',
     build: (b, r) => fill(b, ['n', 'b', 'r', 'p', 'n', 'b', 'p', 'p'], r)
   },
   {
-    id: 'hofstaat', name: 'DER HOFSTAAT', tier: 4, weight: 2,
-    blurb: 'Dame, Turm und schlechte Laune.',
+    id: 'court', name: 'THE COURT', tier: 4, weight: 2,
+    blurb: 'A queen, a rook, and a bad mood.',
     build: (b, r) => fill(b, ['q', 'r', 'b', 'p', 'p', 'p'], r)
   }
 ];
