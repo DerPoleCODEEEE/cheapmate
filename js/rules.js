@@ -1,49 +1,55 @@
-// Reine Spielregeln & Werte. Keine DOM-Abhaengigkeit -> in Node testbar.
+// Core values, prices, fish tiers, FEN building. No DOM, testable in Node.
 
 export const VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9 };
 
-// Ladenpreise. Bewusst NICHT identisch mit dem Materialwert:
-// Bauern sind relativ teuer (sie sind fuer eine schwache Engine schwer zu nutzen),
-// Dame ist relativ guenstig (sie gewinnt auch mit dummem Fisch).
+// Shop prices deliberately differ from material value: pawns are relatively
+// expensive (a weak engine cannot use them), the queen is relatively cheap
+// (she wins games even for an idiot).
 export const COST = { p: 2, n: 5, b: 5, r: 8, q: 13 };
 
-export const PIECE_NAME = {
-  p: 'Bauer', n: 'Springer', b: 'Laeufer', r: 'Turm', q: 'Dame', k: 'Koenig'
-};
+export const PIECE_NAME = { p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King' };
 
-// Rang deines Fisches je Stockfish Skill Level (0-20)
-export const FISH_RANKS = [
-  { lvl: 0,  name: 'FISCHSTAEBCHEN', desc: 'Es ist nicht mal ein ganzer Fisch.' },
-  { lvl: 2,  name: 'SARDINE',        desc: 'Klein. Salzig. Haengt Figuren ein.' },
-  { lvl: 4,  name: 'HERING',         desc: 'Sieht Matt in eins. Manchmal.' },
-  { lvl: 6,  name: 'MAKRELE',        desc: 'Hat von Entwicklung gehoert.' },
-  { lvl: 8,  name: 'FORELLE',        desc: 'Faengt an, Gabeln zu bemerken.' },
-  { lvl: 10, name: 'KARPFEN',        desc: 'Solide. Langweilig. Effektiv.' },
-  { lvl: 12, name: 'LACHS',          desc: 'Schwimmt jetzt flussaufwaerts.' },
-  { lvl: 14, name: 'THUNFISCH',      desc: 'Rechnet tief. Riecht streng.' },
-  { lvl: 16, name: 'SCHWERTFISCH',   desc: 'Spitz. Gefaehrlich. Teuer.' },
-  { lvl: 18, name: 'BARRAKUDA',      desc: 'Du willst nicht dagegen spielen.' },
-  { lvl: 19, name: 'HAI',            desc: 'Riecht Blut ab drei Bauern.' },
-  { lvl: 20, name: 'ORCA',           desc: 'Kein Fisch. Interessiert ihn nicht.' }
+// You are BLACK. White (the enemy) moves first, so White can always answer a
+// threatened mate -- otherwise "drop a queen, mate in one" would be the same
+// solution every round.
+export const PLAYER_COLOR = 'b';
+export const ENEMY_COLOR  = 'w';
+export const PLAYER_ZONE  = [5, 8];
+export const ENEMY_ZONE   = [1, 4];
+export const PLAYER_KING_SQUARE = 'e8';
+
+// --- Fish tiers -------------------------------------------------------------
+// `art` picks the drawing; every tier looks visibly different from the last.
+export const FISH_TIERS = [
+  { lvl: 0,  name: 'FISH STICK',  art: 'stick',     line: 'Not even a whole fish.' },
+  { lvl: 2,  name: 'SARDINE',     art: 'sardine',   line: 'Small. Salty. Hangs pieces.' },
+  { lvl: 4,  name: 'HERRING',     art: 'herring',   line: 'Spots mate in one. Sometimes.' },
+  { lvl: 6,  name: 'MACKEREL',    art: 'mackerel',  line: 'Has heard of development.' },
+  { lvl: 8,  name: 'TROUT',       art: 'trout',     line: 'Starting to notice forks.' },
+  { lvl: 10, name: 'CARP',        art: 'carp',      line: 'Solid. Dull. Effective.' },
+  { lvl: 12, name: 'SALMON',      art: 'salmon',    line: 'Swimming upstream now.' },
+  { lvl: 14, name: 'TUNA',        art: 'tuna',      line: 'Calculates deep. Smells worse.' },
+  { lvl: 16, name: 'SWORDFISH',   art: 'swordfish', line: 'Pointy. Dangerous. Pricey.' },
+  { lvl: 18, name: 'BARRACUDA',   art: 'barracuda', line: 'You would not want to face it.' },
+  { lvl: 19, name: 'SHARK',       art: 'shark',     line: 'Smells blood at three pawns.' },
+  { lvl: 20, name: 'ORCA',        art: 'orca',      line: 'Not a fish. Does not care.' }
 ];
 
-export function fishRank(level) {
-  let out = FISH_RANKS[0];
-  for (const r of FISH_RANKS) if (level >= r.lvl) out = r;
+export function fishTier(level) {
+  let out = FISH_TIERS[0];
+  for (const t of FISH_TIERS) if (level >= t.lvl) out = t;
   return out;
+}
+export function nextFishTier(level) {
+  return FISH_TIERS.find(t => t.lvl > level) || null;
 }
 
 export function armyValue(pieces) {
   return pieces.reduce((s, p) => s + (VALUE[p.type] || 0), 0);
 }
 
-export function armyCost(pieces) {
-  return pieces.reduce((s, p) => s + (COST[p.type] || 0), 0);
-}
-
-// --- FEN-Bau -------------------------------------------------------------
-// pieces: [{type:'q', color:'w', square:'d1'}, ...]  (Koenige inklusive)
-export function buildFen(pieces, turn = 'w') {   // Weiss zieht immer zuerst
+// --- FEN --------------------------------------------------------------------
+export function buildFen(pieces, turn = 'w') {   // White always moves first
   const grid = Array.from({ length: 8 }, () => Array(8).fill(null));
   for (const p of pieces) {
     const f = p.square.charCodeAt(0) - 97;
@@ -59,30 +65,43 @@ export function buildFen(pieces, turn = 'w') {   // Weiss zieht immer zuerst
     if (empty) s += empty;
     return s;
   });
-  // Keine Rochade: Die Startstellungen sind kuenstlich, Rochaderechte waeren Unsinn.
+  // No castling: these are artificial positions, castling rights make no sense.
   return `${rows.join('/')} ${turn} - - 0 1`;
 }
 
-export const FILES = ['a','b','c','d','e','f','g','h'];
+export const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 export const sq = (f, r) => FILES[f] + r;
+export function squareInfo(s) { return { file: s.charCodeAt(0) - 97, rank: parseInt(s[1], 10) }; }
 
-export function squareInfo(s) {
-  return { file: s.charCodeAt(0) - 97, rank: parseInt(s[1], 10) };
+// ---------------------------------------------------------------------------
+// A chess side can hold at most 16 men. Stockfish REJECTS anything bigger --
+// it answers "bestmove (none)" and the fight dies silently, which is exactly
+// what happened to the PRIME boss during testing (18 black pieces).
+// Verified against the engine: 8 pawns + 4 rooks is fine, 16 non-king is not.
+// Impossible-by-promotion armies are deliberately allowed; Stockfish plays
+// them happily and "nine queens" is a perfectly good power fantasy.
+// ---------------------------------------------------------------------------
+export const MAX_NON_KING = 15;
+
+export function countTypes(pieces) {
+  const c = { p: 0, n: 0, b: 0, r: 0, q: 0 };
+  for (const pc of pieces) if (c[pc.type] != null) c[pc.type]++;
+  return c;
 }
 
-// Du bist SCHWARZ. Weiss (der Gegner) zieht zuerst und kann sich damit gegen
-// ein gedrohtes Matt wehren -- sonst waere "Dame hinstellen, Matt in 1" die
-// immer gleiche Loesung und das Spiel waere nach zwei Runden durch.
-export const PLAYER_COLOR = 'b';
-export const ENEMY_COLOR  = 'w';
-export const PLAYER_ZONE  = [5, 8];   // deine Haelfte
-export const ENEMY_ZONE   = [1, 4];
+// Returns null when the army is fine, otherwise a human-readable reason.
+export function armyLegalityProblem(counts) {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  if (total > MAX_NON_KING)
+    return `Your side is full. A chess army is 16 men including the king — sell something first.`;
+  if ((counts.p || 0) > 8) return 'Eight pawns is the hard limit.';
+  return null;
+}
 
-export function isLegalPlacement(square, type) {
+// maxRank lets the BEACHHEAD perk push the placement zone into enemy territory.
+export function isLegalPlacement(square, type, minRank = PLAYER_ZONE[0]) {
   const { rank } = squareInfo(square);
-  if (rank < PLAYER_ZONE[0] || rank > PLAYER_ZONE[1]) return false;
-  if (type === 'p' && rank === 8) return false;   // schwarzer Bauer auf Reihe 8 gibt es nicht
+  if (rank < minRank || rank > 8) return false;
+  if (type === 'p' && rank === 8) return false;   // black pawns cannot sit on rank 8
   return true;
 }
-
-export const PLAYER_KING_SQUARE = 'e8';
