@@ -1,8 +1,14 @@
 // ============================================================================
 // Run state, economy, waves, bosses, perks. No DOM in here, so it all stays
 // testable from Node.
+//
+// PERMADEATH: one lost fight ends the run. There are no lives. Everything the
+// placement screen shows -- verdict, thrift tier, mate-in-one warning -- exists
+// because of that: you never make a move, so you must be able to judge the bet
+// before you take it.
 // ============================================================================
-import { CONFIG, plyLimitFor, requiredEdgeCp, movetimeFor } from './config.js';
+import { CONFIG, plyLimitFor, requiredEdgeCp, thriftTier, speedTier,
+         MATE_INSTINCT_DISCOUNT } from './config.js';
 import {
   COST, VALUE, PLAYER_KING_SQUARE, PLAYER_COLOR, ENEMY_COLOR, PLAYER_ZONE,
   isLegalPlacement, buildFen, FILES, countTypes, armyLegalityProblem
@@ -10,7 +16,7 @@ import {
 import { generateEnemy } from './generator.js';
 import { validateSetup } from './validate.js';
 import { scheduleFor, bossForWave, RANK_TAUNTS } from './content.js';
-import { PERKS, PERK_BY_ID, rollOffer, totals } from './perks.js';
+import { PERK_BY_ID, rollOffer, totals } from './perks.js';
 import { Chess } from '../vendor/chess.js';
 
 export const PHASE = { BOOT: 'boot', PLACE: 'place', SIM: 'sim', RESULT: 'result', SHOP: 'shop', OVER: 'over', WON: 'won' };
@@ -35,45 +41,43 @@ export class Game {
     this.round = 0;
     this.wave = 1;
     this.money = CONFIG.START_MONEY;
-    this.hearts = CONFIG.START_HEARTS;
-    this.heartsBought = 0;
     this.fishLevel = CONFIG.START_FISH_LEVEL;
-    this.overclock = 0;
     this.patience = 0;
     this.perks = {};                 // id -> count
     this.phase = PHASE.BOOT;
     this.enemy = null;
     this.boss = null;
+    this.isBoss = false;
+    this.slot = 1;
     this.placed = [];
     this.freeCredits = {};
     this.spentThisRound = 0;
+    this.roundBudget = 0;
+    this.plyLimit = 60;
+    this.startEdge = 0;
     this.lastResult = null;
     this.history = [];
+    this.totalEarned = 0;
     this.rerolls = 0;
     this.offer = [];
-    this.insuranceUsedInWave = false;
     this.rand = mulberry(this.seed ^ 0x9e3779b9);
   }
 
   // --- perk helpers --------------------------------------------------------
   get bonus() { return totals(this.perks); }
   perkCount(id) { return this.perks[id] || 0; }
-  get movetime() { return movetimeFor(this.overclock); }
+  get movetime() { return CONFIG.BASE_MOVETIME; }
 
   // --- prices --------------------------------------------------------------
   priceOf(type) {
     if ((this.freeCredits[type] || 0) > 0) return 0;
     const b = this.bonus;
-    let base = b.priceSet[type] != null ? b.priceSet[type] : COST[type];
+    const base = b.priceSet[type] != null ? b.priceSet[type] : COST[type];
     return Math.max(1, base + b.priceAll);
   }
 
-  placementMinRank() {
-    return this.bonus.beachhead > 0 ? 4 : PLAYER_ZONE[0];
-  }
-  beachheadUsed() {
-    return this.placed.filter(p => +p.square[1] === 4).length;
-  }
+  placementMinRank() { return this.bonus.beachhead > 0 ? 4 : PLAYER_ZONE[0]; }
+  beachheadUsed() { return this.placed.filter(p => +p.square[1] === 4).length; }
 
   // --- starting a fight ----------------------------------------------------
   startRound() {
@@ -82,7 +86,6 @@ export class Game {
     this.wave = sched.wave;
     this.isBoss = sched.isBoss;
     this.slot = sched.slot;
-    if (sched.slot === 1) this.insuranceUsedInWave = false;
 
     if (this.isBoss) {
       const boss = bossForWave(sched.wave);
@@ -106,10 +109,8 @@ export class Game {
 
     this.placed = [];
     this.spentThisRound = 0;
-    this.capturesThisRound = 0;
     this.phase = PHASE.PLACE;
 
-    // free pieces from perks
     this.freeCredits = {};
     for (const [t, n] of Object.entries(this.bonus.freeEach)) this.freeCredits[t] = n;
 
@@ -169,7 +170,7 @@ export class Game {
     if (this.forbiddenSquares(type).has(square))
       return { ok: false, msg: 'That would mate or stalemate White instantly. White needs at least one move.' };
 
-    // Stockfish weigert sich, unmoegliche Armeen zu bewerten -> vorher abfangen.
+    // Stockfish refuses to evaluate impossible armies -- catch it before it happens.
     const after = countTypes(this.placed);
     after[type] = (after[type] || 0) + 1;
     const problem = armyLegalityProblem(after);
@@ -190,8 +191,12 @@ export class Game {
     if (i < 0) return { ok: false };
     const p = this.placed[i];
     this.placed.splice(i, 1);
-    if (p.free) { this.freeCredits[p.type] = (this.freeCredits[p.type] || 0) + 1; return { ok: true, refund: 0, free: true, type: p.type }; }
-    const refund = Math.max(1, (this.bonus.priceSet[p.type] != null ? this.bonus.priceSet[p.type] : COST[p.type]) + this.bonus.priceAll);
+    if (p.free) {
+      this.freeCredits[p.type] = (this.freeCredits[p.type] || 0) + 1;
+      return { ok: true, refund: 0, free: true, type: p.type };
+    }
+    const b = this.bonus;
+    const refund = Math.max(1, (b.priceSet[p.type] != null ? b.priceSet[p.type] : COST[p.type]) + b.priceAll);
     this.money += refund;
     this.spentThisRound -= refund;
     return { ok: true, refund, type: p.type };
@@ -199,7 +204,7 @@ export class Game {
 
   clearBoard() { while (this.placed.length) this.sell(this.placed[0].square); }
 
-  // Fuer die UI: welche Typen sind gerade ueberhaupt noch kaufbar?
+  // For the UI: is this piece type still buyable at all?
   typeBlocked(type) {
     const after = countTypes(this.placed);
     after[type] = (after[type] || 0) + 1;
@@ -209,12 +214,44 @@ export class Game {
   validate() { return validateSetup(this.enemy.pieces, this.playerPieces()); }
 
   materialEdge() {
-    const mine = this.playerPieces().reduce((s, p) => s + (VALUE[p.type] || 0), 0);
+    const mine = this.placed.reduce((s, p) => s + (VALUE[p.type] || 0), 0);
     return mine - this.enemy.material;
   }
-  requiredEdge() { return requiredEdgeCp(this.fishLevel); }
+  myMaterial() { return this.placed.reduce((s, p) => s + (VALUE[p.type] || 0), 0); }
 
-  // THE MIRROR copies your most expensive purchase onto White's side.
+  // Mate instinct means a forced mate is never missed, so the fish only has to
+  // build one, not find it. That lowers the material it needs.
+  requiredEdge() { return requiredEdgeCp(this.fishLevel) * MATE_INSTINCT_DISCOUNT; }
+
+  // --- multipliers ---------------------------------------------------------
+  // Shown live during placement so the bet is visible before you take it.
+  thriftNow() {
+    const b = this.bonus;
+    const tier = thriftTier(this.materialEdge());
+    return { ...tier, mult: +(tier.mult + b.thrift).toFixed(2) };
+  }
+  speedBest() {
+    const b = this.bonus;
+    const tier = SPEED_BEST;
+    return { ...tier, mult: +(tier.mult + b.speed).toFixed(2) };
+  }
+
+  // A rough "if you win right now" figure for the placement screen.
+  previewPayout() {
+    const b = this.bonus;
+    const thrift = this.thriftNow();
+    const purse = CONFIG.purse(this.round) + b.purse +
+      (this.isBoss ? CONFIG.bossBonus(this.wave) : 0);
+    // Assume you keep about two thirds of your material and take about half
+    // of White's -- close enough for a preview, and honest about being one.
+    const salvage = Math.round(this.myMaterial() * 0.66 * (b.salvageRate ?? CONFIG.SALVAGE_PER_POINT));
+    const loot = Math.round(this.enemy.material * 0.5 * CONFIG.LOOT_PER_POINT * b.lootMult);
+    const low = Math.round((purse + salvage + loot) * thrift.mult * (1 + b.speed));
+    const high = Math.round((purse + salvage + loot) * thrift.mult * (1.5 + b.speed));
+    return { thrift, low, high, purse, salvage, loot };
+  }
+
+  // --- THE MIRROR copies your most expensive purchase onto White's side ----
   applyMirror() {
     if (!this.boss || !this.boss.mods.mirror || !this.placed.length) return null;
     const best = [...this.placed].sort((a, b) => VALUE[b.type] - VALUE[a.type])[0];
@@ -240,6 +277,10 @@ export class Game {
     return null;
   }
 
+  // Called the moment the fight actually starts, after any mirror copy, so the
+  // thrift tier is judged on the position that was really played.
+  lockInEdge() { this.startEdge = this.materialEdge(); return this.startEdge; }
+
   // --- engine strength during a fight -------------------------------------
   effectiveSkill({ ply = 0, myPieces = 99 } = {}) {
     const b = this.bonus;
@@ -251,8 +292,44 @@ export class Game {
     return Math.max(0, Math.min(20, Math.round(s)));
   }
 
+  // --- payout --------------------------------------------------------------
+  // Returns a full breakdown so the result screen can count it up line by line.
+  computePayout({ plies, capturedValue, survivingValue }) {
+    const b = this.bonus;
+    const thrift = thriftTier(this.startEdge);
+    const speed = speedTier(plies, this.plyLimit);
+    const thriftMult = +(thrift.mult + b.thrift).toFixed(2);
+    const speedMult = +(speed.mult + b.speed).toFixed(2);
+
+    const basePurse = CONFIG.purse(this.round) + b.purse;
+    const bossPurse = this.isBoss ? CONFIG.bossBonus(this.wave) : 0;
+    const loot = Math.round(capturedValue * CONFIG.LOOT_PER_POINT * b.lootMult);
+    const salvage = Math.round(survivingValue * (b.salvageRate ?? CONFIG.SALVAGE_PER_POINT));
+    const refund = Math.round(Math.max(0, this.spentThisRound) * b.refund);
+
+    const subtotal = basePurse + bossPurse + loot + salvage;
+    const afterMults = Math.round(subtotal * thriftMult * speedMult);
+    const total = afterMults + refund;
+
+    const lines = [
+      { key: 'purse', label: 'Purse', value: basePurse },
+      ...(bossPurse ? [{ key: 'boss', label: 'Boss bounty', value: bossPurse }] : []),
+      ...(loot ? [{ key: 'loot', label: `Loot (${capturedValue} pts taken)`, value: loot }] : []),
+      ...(salvage ? [{ key: 'salvage', label: `Salvage (${survivingValue} pts survived)`, value: salvage }] : [])
+    ];
+    const mults = [
+      { key: 'thrift', label: `THRIFT — ${thrift.name}`, note: thrift.note, mult: thriftMult },
+      { key: 'speed', label: `SPEED — ${speed.name}`, note: `${plies} of ${this.plyLimit} half-moves`, mult: speedMult }
+    ];
+
+    return {
+      lines, mults, subtotal, thrift, speed, thriftMult, speedMult,
+      afterMults, refund, total, capturedValue, survivingValue
+    };
+  }
+
   // --- end of fight --------------------------------------------------------
-  finishRound(outcome, plies, { captures = 0, finalEvalCp = null } = {}) {
+  finishRound(outcome, plies, { capturedValue = 0, survivingValue = 0, finalEvalCp = null } = {}) {
     const b = this.bonus;
     let result = outcome;
 
@@ -267,40 +344,30 @@ export class Game {
       round: this.round, wave: this.wave, isBoss: this.isBoss, won, result, plies,
       plyLimit: this.plyLimit, spent: this.spentThisRound,
       bought: this.placed.map(p => p.type), fishLevel: this.fishLevel,
-      themeId: this.enemy.theme.id, captures, overtimeUsed, heartSaved: false,
-      bossName: this.boss ? this.boss.name : null
+      themeId: this.enemy.theme.id, overtimeUsed, startEdge: this.startEdge,
+      bossName: this.boss ? this.boss.name : null,
+      perkTotal: Object.values(this.perks).reduce((s, n) => s + n, 0)
     };
 
     if (won) {
-      let income = CONFIG.income(this.round) + b.income;
-      if (this.isBoss) income += CONFIG.bossBonus(this.wave);
-      const bounty = captures * b.perCapture;
-      const refund = Math.round(Math.max(0, this.spentThisRound) * b.refund);
-      this.money += income + bounty + refund;
-      Object.assign(payload, { income, bounty, refund, total: income + bounty + refund });
-      if (this.isBoss && b.healOnBoss) {
-        const heal = Math.min(b.healOnBoss, this.maxHearts() - this.hearts);
-        if (heal > 0) { this.hearts += heal; payload.healed = heal; }
-      }
+      const pay = this.computePayout({ plies, capturedValue, survivingValue });
+      this.money += pay.total;
+      this.totalEarned += pay.total;
+      payload.pay = pay;
+      payload.thriftName = pay.thrift.name;
+      payload.thriftMult = pay.thriftMult;
+      payload.speedMult = pay.speedMult;
+      payload.total = pay.total;
+      this.phase = (this.boss && this.boss.id === 'prime') ? PHASE.WON : PHASE.RESULT;
     } else {
-      if (b.heartGuard && !this.insuranceUsedInWave) {
-        this.insuranceUsedInWave = true;
-        payload.heartSaved = true;
-      } else {
-        this.hearts--;
-      }
-      payload.heartsLeft = this.hearts;
+      // Permadeath. One loss and the run is over -- no lives, no retries.
+      this.phase = PHASE.OVER;
     }
 
     this.history.push(payload);
     this.lastResult = payload;
-    if (this.hearts <= 0) this.phase = PHASE.OVER;
-    else if (won && this.boss && this.boss.id === 'prime') this.phase = PHASE.WON;
-    else this.phase = PHASE.RESULT;
     return payload;
   }
-
-  maxHearts() { return Math.min(CONFIG.MAX_HEARTS, CONFIG.START_HEARTS + this.heartsBought + 1); }
 
   // --- THE LAB (permanent stats, always available) -------------------------
   labItems() {
@@ -309,25 +376,13 @@ export class Game {
       id: 'fish', name: 'FEED THE FISH', icon: 'fish',
       cost: CONFIG.fishUpgradeCost(this.fishLevel),
       value: `Skill ${this.fishLevel} → ${this.fishLevel + 1}`,
-      desc: 'A smarter fish needs less material. This is the main line.'
-    });
-    if (this.overclock < CONFIG.MAX_OVERCLOCK) items.push({
-      id: 'overclock', name: 'OVERCLOCK', icon: 'bolt',
-      cost: CONFIG.overclockCost(this.overclock),
-      value: `${this.movetime}ms → ${this.movetime + CONFIG.MOVETIME_STEP}ms per move`,
-      desc: 'More thinking time. Measured: worth a lot to a dumb fish, almost nothing to a clever one.'
+      desc: 'A smarter fish needs less material — and less material means a bigger THRIFT multiplier.'
     });
     items.push({
       id: 'patience', name: 'PATIENCE', icon: 'clock',
       cost: CONFIG.patienceCost(this.patience / CONFIG.PATIENCE_GAIN),
       value: `+${CONFIG.PATIENCE_GAIN} half-moves, every fight`,
-      desc: 'More time on the clock to land the mate.'
-    });
-    if (this.hearts < this.maxHearts()) items.push({
-      id: 'heart', name: 'SPARE HEART', icon: 'heart',
-      cost: CONFIG.heartCost(this.heartsBought),
-      value: `${this.hearts} → ${this.hearts + 1} lives`,
-      desc: 'Expensive. You know why.'
+      desc: 'More room on the clock. Careful: a longer limit makes the SPEED multiplier harder to reach.'
     });
     return items;
   }
@@ -337,9 +392,7 @@ export class Game {
     if (!item || this.money < item.cost) return { ok: false };
     this.money -= item.cost;
     if (id === 'fish') this.fishLevel++;
-    if (id === 'overclock') this.overclock++;
     if (id === 'patience') this.patience += CONFIG.PATIENCE_GAIN;
-    if (id === 'heart') { this.hearts++; this.heartsBought++; }
     return { ok: true, item };
   }
 
@@ -374,3 +427,5 @@ export class Game {
       .map(([id, n]) => ({ ...PERK_BY_ID[id], count: n }));
   }
 }
+
+const SPEED_BEST = { maxFrac: 0.35, mult: 1.5, name: 'SURGICAL' };
