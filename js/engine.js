@@ -1,7 +1,7 @@
-// Stockfish 18 Lite (single-thread WASM) als Web Worker.
-// Zwei getrennte Instanzen: dein Fisch und der Gegner teilen sich KEINE
-// Transpositionstabelle. Sonst wuerde der schwache Fisch vom starken
-// mitlernen und das ganze Upgrade-System waere kaputt.
+// Stockfish 18 Lite (single-threaded WASM) as a Web Worker.
+// Separate instances on purpose: your fish, the opponent and the referee share
+// NO transposition table. Otherwise the weak fish would learn from the strong
+// one and the whole upgrade system would be worthless.
 
 const WASM_JS = 'vendor/stockfish/stockfish-18-lite-single.js';
 const WASM_BIN = 'vendor/stockfish/stockfish-18-lite-single.wasm';
@@ -15,11 +15,10 @@ export class Engine {
   }
 
   async boot(onProgress) {
-    // WICHTIG: Im Worker loesen sich relative URLs gegen das WORKER-Skript auf,
-    // nicht gegen die Seite. Ein relativer Pfad wuerde hier zu
-    // /vendor/stockfish/vendor/stockfish/...wasm und damit auf 404 laufen.
-    // Darum die absolute URL aus der Seite bauen -- funktioniert auch, wenn
-    // das Spiel in einem Unterordner liegt.
+    // IMPORTANT: inside a Worker, relative URLs resolve against the WORKER
+    // script, not the page. A relative path would become
+    // /vendor/stockfish/vendor/stockfish/...wasm and 404. So build an absolute
+    // URL from the page -- this also works if the game lives in a subfolder.
     const base = (typeof document !== 'undefined' && document.baseURI) || '/';
     const wasmUrl = new URL(WASM_BIN, base).href;
     this.worker = new Worker(`${WASM_JS}#${encodeURIComponent(wasmUrl)}`);
@@ -60,7 +59,7 @@ export class Engine {
     await this.waitFor(l => l.startsWith('readyok'));
   }
 
-  // Liefert {move, mate, cp, depth}
+  // Returns { move, mate, cp, depth }
   async search(fen, { skill = 20, movetime = 120, depth = null } = {}) {
     this.send(`setoption name Skill Level value ${Math.max(0, Math.min(20, skill))}`);
     this.send(`position fen ${fen}`);
@@ -82,12 +81,6 @@ export class Engine {
     }, 30000);
     this.send(depth ? `go depth ${depth}` : `go movetime ${movetime}`);
     return done;
-  }
-
-  // Reine Stellungsbewertung aus Sicht der Seite am Zug.
-  async evaluate(fen, depth = 12) {
-    const r = await this.search(fen, { skill: 20, depth });
-    return r;
   }
 
   destroy() { try { this.send('quit'); this.worker.terminate(); } catch (e) {} }
