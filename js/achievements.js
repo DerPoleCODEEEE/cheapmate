@@ -34,7 +34,21 @@ export const ACHIEVEMENTS = [
   { id: 'freebie', name: 'PAID NOTHING', tier: 3, on: 'roundWon', hidden: true,
     desc: 'Win a fight without spending a single dollar.', test: e => e.spent <= 0 },
   { id: 'rich', name: 'LIQUID', tier: 2, on: 'money',
-    desc: 'Hold $200 at once.', test: e => e.money >= 200 },
+    desc: 'Hold $300 at once.', test: e => e.money >= 300 },
+  { id: 'impossible', name: 'IMPOSSIBLE', tier: 3, on: 'roundWon',
+    desc: 'Win a fight with LESS material than White. The top THRIFT tier.',
+    test: e => e.thriftName === 'IMPOSSIBLE' },
+  { id: 'shoestring', name: 'SHOESTRING', tier: 2, on: 'roundWon',
+    desc: 'Win at THRIFT tier SHOESTRING or better.',
+    test: e => ['IMPOSSIBLE', 'SHOESTRING'].includes(e.thriftName) },
+  { id: 'surgical', name: 'SURGICAL', tier: 2, on: 'roundWon',
+    desc: 'Mate inside the first third of the clock.',
+    test: e => (e.speedMult || 0) >= 1.5 },
+  { id: 'perfectbet', name: 'PERFECT BET', tier: 3, on: 'roundWon', hidden: true,
+    desc: 'Land the top THRIFT and top SPEED multiplier in the same fight.',
+    test: e => (e.thriftMult || 0) >= 3 && (e.speedMult || 0) >= 1.5 },
+  { id: 'bigpay', name: 'PAYDAY', tier: 2, on: 'roundWon',
+    desc: 'Earn $200 or more from a single fight.', test: e => (e.total || 0) >= 200 },
   { id: 'frugal3', name: 'TIGHT FISTED', tier: 3, on: 'roundWon',
     desc: 'Win three fights in a row for under $20 each.', test: (e, s) => s.frugalStreak >= 3 },
 
@@ -58,7 +72,12 @@ export const ACHIEVEMENTS = [
   { id: 'perk12', name: 'UNFAIR', tier: 3, on: 'perk',
     desc: 'Own twelve perks. The fish is now a problem.', test: (e, s) => s.perkCount >= 12 },
   { id: 'bloodbath', name: 'BLOODBATH', tier: 2, on: 'roundWon', hidden: true,
-    desc: 'Earn $20 or more from captures in one fight.', test: e => (e.bounty || 0) >= 20 },
+    desc: 'Take 20 or more points of material in a single fight.',
+    test: e => (e.pay && e.pay.capturedValue || 0) >= 20 },
+  { id: 'untouched', name: 'NOT A SCRATCH', tier: 3, on: 'roundWon', hidden: true,
+    desc: 'Win without losing a single piece.',
+    test: e => e.pay && e.pay.survivingValue >= (e.startEdge + 0) && e.bought.length > 0 &&
+              e.pay.survivingValue === e.bought.reduce((s, t) => s + ({p:1,n:3,b:3,r:5,q:9}[t] || 0), 0) },
 
   // --- tempo --------------------------------------------------------------
   { id: 'blitz', name: 'SNAP MATE', tier: 2, on: 'roundWon',
@@ -86,9 +105,9 @@ export const ACHIEVEMENTS = [
     desc: 'Lose to THE INTERN. It will tell everyone.', test: e => e.themeId === 'intern' },
 
   // --- mastery ------------------------------------------------------------
-  { id: 'flawless', name: 'FLAWLESS', tier: 3, on: 'roundStart',
-    desc: 'Reach wave 4 without losing a single heart.',
-    test: (e, s) => e.wave >= 4 && s.heartsLost === 0 }
+  { id: 'streak8', name: 'UNBEATEN', tier: 3, on: 'roundWon',
+    desc: 'Win eight fights in one run. There are no second chances.',
+    test: (e, s) => s.roundsWon >= 8 }
 ];
 
 const KEY = 'cheapmate.achievements.v2';
@@ -97,7 +116,7 @@ export class AchievementTracker {
   constructor(onUnlock) {
     this.onUnlock = onUnlock;
     this.unlocked = this.load();
-    this.stats = { roundsWon: 0, heartsLost: 0, frugalStreak: 0, perkCount: 0 };
+    this.stats = { roundsWon: 0, frugalStreak: 0, perkCount: 0 };
   }
 
   load() {
@@ -112,10 +131,9 @@ export class AchievementTracker {
       this.stats.roundsWon++;
       this.stats.frugalStreak = p.spent < 20 ? this.stats.frugalStreak + 1 : 0;
     }
-    if (event === 'heartLost') this.stats.heartsLost++;
     if (event === 'perk') this.stats.perkCount = p.perkCount || 0;
     if (event === 'runStart') {
-      this.stats.heartsLost = 0; this.stats.frugalStreak = 0; this.stats.perkCount = 0;
+      this.stats.roundsWon = 0; this.stats.frugalStreak = 0; this.stats.perkCount = 0;
     }
   }
 
