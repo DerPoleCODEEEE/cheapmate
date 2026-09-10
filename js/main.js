@@ -1,13 +1,13 @@
 window.__cheapmateAlive = true;
 
 import { Chess } from '../vendor/chess.js';
-import { CONFIG, overclockValueHint } from './config.js';
-import { PIECE_NAME, fishTier, nextFishTier, FILES, PLAYER_KING_SQUARE,
+import { CONFIG, riskBand } from './config.js';
+import { PIECE_NAME, VALUE, fishTier, nextFishTier, FILES, PLAYER_KING_SQUARE,
          PLAYER_COLOR, ENEMY_COLOR, PLAYER_ZONE } from './rules.js';
 import { Game, PHASE } from './game.js';
 import { Engine } from './engine.js';
 import { AchievementTracker, ACHIEVEMENTS } from './achievements.js';
-import { ROUGH_DEFS, pieceSvg, fishSvg, icon, heartSvg, COIN_SOLID, PRIME_SVG } from './art.js';
+import { ROUGH_DEFS, pieceSvg, fishSvg, icon, COIN_SOLID, PRIME_SVG } from './art.js';
 import { SKIRMISHES_PER_WAVE, scheduleFor } from './content.js';
 import { RARITY } from './perks.js';
 import { sfx } from './sfx.js';
@@ -27,7 +27,7 @@ $('#money-ico').innerHTML = COIN_SOLID;
 const game = new Game();
 const myFish  = new Engine('you');
 const foeFish = new Engine('enemy');
-const referee = new Engine('referee');    // neutral judge, drives the eval bar
+const referee = new Engine('referee');   // neutral judge: eval bar + mate instinct
 const trophies = new AchievementTracker(a => showToast(a));
 
 let selectedType = null;
@@ -50,7 +50,7 @@ function showToast(a) {
     <div><div class="t-kicker">Unlocked</div>
       <div class="t-name">${a.name}</div><div class="t-desc">${a.desc}</div></div>`;
   $('#toast-root').appendChild(t);
-  setTimeout(() => t.querySelector('.rays')?.remove(), 800);
+  setTimeout(() => { const r = t.querySelector('.rays'); if (r) r.remove(); }, 800);
   setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 420); }, 4600);
   updateTrophyCount();
 }
@@ -144,7 +144,7 @@ function coinPop(square) {
   setTimeout(() => c.remove(), 850);
 }
 
-function animateMove(mv) {
+function animateMove(mv, { instinct = false } = {}) {
   const fromEl = pieceEls.get(mv.from);
   if (!fromEl) return;
   if (mv.captured) {
@@ -161,6 +161,7 @@ function animateMove(mv) {
   const { f, r } = squareToXY(mv.to);
   fromEl.style.transform = `translate(calc(${f} * var(--cell)), calc(${r} * var(--cell)))`;
   fromEl.dataset.square = mv.to;
+  if (instinct) { fromEl.classList.add('instinct'); setTimeout(() => fromEl.classList.remove('instinct'), 650); }
   if (mv.promotion) setTimeout(() => {
     fromEl.innerHTML = pieceSvg(mv.promotion, mv.color);
     fromEl.classList.add('placing');
@@ -191,20 +192,12 @@ function setEval(cp, mate) {
   num.textContent = label;
 }
 
-// Judge with a neutral full-strength engine, reported from YOUR side.
-// Kicked off alongside the move animation so it costs no extra waiting.
-async function judge(fen) {
-  if (!referee.ready) return null;
-  try {
-    const r = await referee.search(fen, { skill: 20, depth: CONFIG.REFEREE_DEPTH });
-    const flip = fen.split(' ')[1] === 'w' ? -1 : 1;   // score is from the mover's view
-    const cp = r.cp != null ? r.cp * flip : null;
-    const mate = r.mate != null ? r.mate * flip : null;
-    setEval(cp, mate);
-    return cp != null ? cp : (mate != null ? (mate > 0 ? 9999 : -9999) : null);
-  } catch (e) {
-    return null;   // the bar is decoration; never let it break a fight
-  }
+function showEval(r, scoreIsFromPlayer) {
+  const flip = scoreIsFromPlayer ? 1 : -1;
+  const cp = r.cp != null ? r.cp * flip : null;
+  const mate = r.mate != null ? r.mate * flip : null;
+  setEval(cp, mate);
+  return cp != null ? cp : (mate != null ? (mate > 0 ? 9999 : -9999) : null);
 }
 
 // ===========================================================================
@@ -216,11 +209,11 @@ function renderShopRail() {
   for (const type of ['p', 'n', 'b', 'r', 'q']) {
     const credits = game.freeCredits[type] || 0;
     const price = game.priceOf(type);
-    const blocked = game.typeBlocked(type);          // 16-Figuren-Grenze
+    const blocked = game.typeBlocked(type);          // the 16-men limit
     const broke = !!blocked || (credits === 0 && game.money < price);
     const item = el('div', 'shop-item' + (broke ? ' broke' : '') + (selectedType === type ? ' selected' : ''));
     if (blocked) item.title = blocked;
-    item.innerHTML = `<div class="si-icon">${pieceSvg(type, PLAYER_COLOR, { size: 32 })}</div>
+    item.innerHTML = `<div class="si-icon">${pieceSvg(type, PLAYER_COLOR, { size: 31 })}</div>
       <div class="si-name">${PIECE_NAME[type]}</div>
       <div class="si-price">${credits > 0 ? `<span class="si-free">FREE ×${credits}</span>` : '$' + price}</div>`;
     item.onclick = () => {
@@ -288,6 +281,14 @@ function refreshPlacement() {
   $('#material-val').textContent = (edge >= 0 ? '+' : '') + edge;
   $('#plies-val').textContent = Math.floor(game.plyLimit / 2);
 
+  // The bet, shown before it is taken. Under permadeath this is the whole UI.
+  const prev = game.previewPayout();
+  const cell = $('#dash-thrift');
+  $('#thrift-mult').textContent = '×' + prev.thrift.mult.toFixed(2);
+  $('#thrift-name').textContent = prev.thrift.name;
+  cell.classList.toggle('hot', prev.thrift.mult >= 1.8);
+  $('#payout-est').textContent = game.placed.length ? `$${prev.low}–${prev.high}` : '–';
+
   const verdict = $('#verdict'), start = $('#btn-start');
   if (!v.ok) {
     verdict.className = 'verdict bad';
@@ -298,20 +299,18 @@ function refreshPlacement() {
     verdict.textContent = 'Only your king is out there. That will not end well.';
     start.disabled = true;
   } else if (v.whiteMateIn1) {
-    // White moves first. If it has mate in one, the fight is over before your
-    // fish touches a piece -- and the player cannot see that from the board.
     verdict.className = 'verdict bad';
-    verdict.textContent = `WHITE HAS MATE IN ONE (${v.whiteMateIn1}). It moves first — fix this or you lose instantly.`;
+    verdict.textContent = `WHITE HAS MATE IN ONE (${v.whiteMateIn1}). It moves first — fix this or you lose the run.`;
     start.disabled = false;
   } else {
+    // The advisor is calibrated against measured win rates, not vibes: at
+    // ratio 1.0 you are only a ~75% favourite, and under permadeath that is
+    // a gamble, so it is labelled as one.
     const need = Math.max(1, game.requiredEdge() / 100);
-    const ratio = edge / need;
-    verdict.className = 'verdict' + (ratio >= 0.95 ? ' good' : '');
-    verdict.textContent =
-      ratio < 0.55 ? 'Your fish is far too weak for this little material. Buy more.'
-      : ratio < 0.95 ? 'Tight. Might work, might be embarrassing.'
-      : ratio < 1.9 ? 'Solid. Your fish should manage this.'
-      : 'Lavish. Lovely — but that money is gone next round.';
+    const band = riskBand(edge / need);
+    verdict.className = 'verdict ' + band.tone;
+    verdict.innerHTML = `<b>${prev.thrift.name} ×${prev.thrift.mult.toFixed(2)}</b> &nbsp;·&nbsp; ` +
+                        `${band.label.toUpperCase()} &nbsp;·&nbsp; ${band.text}`;
     start.disabled = false;
   }
 }
@@ -331,7 +330,7 @@ function defaultStatus() {
 }
 
 // ===========================================================================
-// HUD
+// Dashboard + right rail
 // ===========================================================================
 function pulse(sel) {
   const e = $(sel);
@@ -340,7 +339,7 @@ function pulse(sel) {
 }
 
 function updateHud() {
-  $('#stat-money').querySelector('b').textContent = game.money;
+  $('#money-val').textContent = game.money;
   $('#wave-num').textContent = game.wave;
 
   const dots = $('#wave-dots');
@@ -352,24 +351,38 @@ function updateHud() {
   }
 
   const tier = fishTier(game.fishLevel);
-  $('#fish-ico').innerHTML = fishSvg(tier.art, { size: 46 });
-  const f = $('#stat-fish');
-  f.querySelector('b').textContent = tier.name;
-  f.querySelector('small').textContent = `skill ${game.fishLevel} · ${game.movetime}ms`;
+  $('#fish-ico').innerHTML = fishSvg(tier.art, { size: 62 });
+  $('#fish-name').textContent = tier.name;
+  $('#fish-sub').textContent = `skill ${game.fishLevel} / 20`;
+  $('#fish-bar').style.width = (game.fishLevel / 20 * 100) + '%';
 
-  const h = $('#stat-hearts').querySelector('b');
-  const slots = Math.max(CONFIG.START_HEARTS, game.hearts);
-  h.innerHTML = Array.from({ length: slots }, (_, i) => heartSvg(i < game.hearts)).join('');
-
+  renderRunStats();
   renderPerkChips();
   trophies.fire('money', { money: game.money });
+}
+
+// Everything permanent you own, always visible, no clicking required.
+function renderRunStats() {
+  const b = game.bonus;
+  const rows = [
+    ['Fights won', game.history.filter(h => h.won).length],
+    ['Earned this run', '$' + game.totalEarned],
+    ['Clock bonus', game.patience ? `+${game.patience} half-moves` : '—'],
+    ['Thrift bonus', b.thrift ? `+${b.thrift.toFixed(2)}` : '—'],
+    ['Speed bonus', b.speed ? `+${b.speed.toFixed(2)}` : '—'],
+    ['Free pieces', Object.keys(b.freeEach).length
+      ? Object.entries(b.freeEach).map(([t, n]) => `${n}×${PIECE_NAME[t]}`).join(', ') : '—']
+  ];
+  $('#run-stats').innerHTML = rows
+    .map(([k, v]) => `<div class="run-stat"><span>${k}</span><span>${v}</span></div>`).join('');
 }
 
 function renderPerkChips(freshId) {
   const box = $('#perk-chips');
   const owned = game.ownedPerks();
+  $('#perk-count').textContent = owned.reduce((s, p) => s + p.count, 0);
   if (!owned.length) {
-    box.innerHTML = '<span class="chips-empty">No perks yet. Visit the Black Market.</span>';
+    box.innerHTML = '<span class="chips-empty">None yet. The Black Market opens after your first win.</span>';
     return;
   }
   box.innerHTML = owned.map(p =>
@@ -408,6 +421,7 @@ async function runSimulation() {
     flashStatus(`THE MIRROR copies your ${PIECE_NAME[mirrored.type].toLowerCase()}.`);
     await sleep(900);
   }
+  game.lockInEdge();
 
   const v = game.validate();
   chess = new Chess();
@@ -416,15 +430,15 @@ async function runSimulation() {
   $('#rail-left').classList.add('hidden');
   $('#speed-row').classList.remove('hidden');
   $('#btn-start').classList.add('hidden');
+  $('#verdict').classList.add('hidden');
   $('#status-text').textContent = 'The engines are playing. You watch.';
   document.querySelectorAll('.sq').forEach(s => {
     s.classList.remove('can-place', 'hint', 'zone', 'beach');
   });
 
-  await Promise.all([myFish.newGame(), foeFish.newGame()]);
-  await judge(chess.fen());
+  await Promise.all([myFish.newGame(), foeFish.newGame(), referee.newGame()]);
 
-  let plies = 0, outcome = 'timeout', captures = 0, lastEval = null;
+  let plies = 0, outcome = 'timeout', capturedValue = 0, lastEval = null;
 
   while (plies < game.plyLimit) {
     if (chess.isGameOver()) {
@@ -432,38 +446,60 @@ async function runSimulation() {
       break;
     }
     const mine = chess.turn() === PLAYER_COLOR;
-    const eng = mine ? myFish : foeFish;
-    const myPieces = chess.board().flat()
-      .filter(c => c && c.color === PLAYER_COLOR && c.type !== 'k').length;
+    let move = null, instinct = false;
 
-    const r = await eng.search(chess.fen(), {
-      skill: mine ? game.effectiveSkill({ ply: plies, myPieces }) : 20,
-      movetime: mine ? game.movetime : CONFIG.MOVETIME_ENEMY
-    });
-    if (!r.move) { outcome = chess.moves().length ? 'draw' : (mine ? 'loss' : 'win'); break; }
+    if (mine) {
+      // MATE INSTINCT. However bad your fish is, it never misses a forced mate.
+      // The neutral referee looks first; if it sees a mate for you, that move
+      // is played. The same search feeds the evaluation bar, so this costs one
+      // search per move of yours and nothing on top.
+      const probe = await referee.search(chess.fen(), {
+        skill: 20, depth: CONFIG.MATE_INSTINCT_DEPTH
+      });
+      const ev = showEval(probe, true);
+      if (ev != null) lastEval = ev;
+
+      if (probe.mate != null && probe.mate > 0 && probe.move) {
+        move = probe.move;
+        instinct = true;
+      } else {
+        const myPieces = chess.board().flat()
+          .filter(c => c && c.color === PLAYER_COLOR && c.type !== 'k').length;
+        const r = await myFish.search(chess.fen(), {
+          skill: game.effectiveSkill({ ply: plies, myPieces }),
+          movetime: game.movetime
+        });
+        move = r.move;
+      }
+    } else {
+      const r = await foeFish.search(chess.fen(), { skill: 20, movetime: CONFIG.MOVETIME_ENEMY });
+      move = r.move;
+      const ev = showEval(r, false);   // full strength, so its own score is fair
+      if (ev != null) lastEval = ev;
+    }
+
+    if (!move) { outcome = chess.moves().length ? 'draw' : (mine ? 'loss' : 'win'); break; }
 
     let mv;
     try {
-      mv = chess.move(r.move, { strict: false });
+      mv = chess.move(move, { strict: false });
     } catch (e) {
       try {
-        mv = chess.move({ from: r.move.slice(0, 2), to: r.move.slice(2, 4), promotion: r.move[4] || 'q' });
+        mv = chess.move({ from: move.slice(0, 2), to: move.slice(2, 4), promotion: move[4] || 'q' });
       } catch (e2) { outcome = 'draw'; break; }
     }
     plies++;
     if (mv.captured && mine) {
-      captures++;
-      if (game.bonus.perCapture && !skipping) coinPop(mv.to);
+      capturedValue += VALUE[mv.captured] || 0;
+      if (!skipping) coinPop(mv.to);
     }
 
     if (!skipping) {
-      animateMove(mv);
+      animateMove(mv, { instinct });
       sfx.play(mv.captured ? 'capture' : 'move');
+      if (instinct) flashStatus('MATE INSTINCT — your fish saw it.');
       $('#plies-val').textContent = Math.ceil((game.plyLimit - plies) / 2);
-      const pending = judge(chess.fen());          // overlaps the animation
       await sleep(Math.max(30, 210 / speed));
-      const got = await pending;
-      if (got != null) lastEval = got;
       if (chess.isCheck()) {
         sfx.play('check');
         const kg = chess.findPiece({ type: 'k', color: chess.turn() })[0];
@@ -476,13 +512,14 @@ async function runSimulation() {
   if (outcome === 'timeout' && chess.isCheckmate()) {
     outcome = chess.turn() === ENEMY_COLOR ? 'win' : 'loss';
   }
-  if (skipping) {
-    renderFinalPosition();
-    const got = await judge(chess.fen());
-    if (got != null) lastEval = got;
-  }
+  if (skipping) renderFinalPosition();
+
+  const survivingValue = chess.board().flat()
+    .filter(c => c && c.color === PLAYER_COLOR && c.type !== 'k')
+    .reduce((s, c) => s + (VALUE[c.type] || 0), 0);
+
   await sleep(320);
-  finishRound(outcome, plies, captures, lastEval);
+  finishRound(outcome, plies, capturedValue, survivingValue, lastEval);
 }
 
 function renderFinalPosition() {
@@ -498,64 +535,98 @@ function renderFinalPosition() {
 // ===========================================================================
 // Result
 // ===========================================================================
-const OUTCOME = {
-  win:     { title: 'MATE!',    line: 'Your fish delivered.' },
-  loss:    { title: 'DEFEATED', line: 'Your king is down. That was not enough material.' },
-  draw:    { title: 'A DRAW?!', line: 'Neither fish nor fowl. Counts as a loss.' },
-  timeout: { title: 'TIME UP',  line: 'No mate inside the limit. Your fish just swam around.' }
+const LOSS_LINE = {
+  loss:    'Your king is down. That was not enough material.',
+  draw:    'Neither fish nor fowl. A draw counts as a loss.',
+  timeout: 'No mate inside the limit. Your fish just swam around.'
 };
 
-function finishRound(outcome, plies, captures, finalEvalCp) {
-  const res = game.finishRound(outcome, plies, { captures, finalEvalCp });
-  const t = OUTCOME[res.result] || OUTCOME.timeout;
+function finishRound(outcome, plies, capturedValue, survivingValue, finalEvalCp) {
+  const res = game.finishRound(outcome, plies, { capturedValue, survivingValue, finalEvalCp });
 
   if (res.won) {
     sfx.play('mate');
     trophies.fire('roundWon', res);
+    updateHud();
+    if (game.phase === PHASE.WON) runComplete(res);
+    else showPayout(res);
   } else {
-    if (res.heartSaved) sfx.play('error');
-    else { sfx.play('heartbreak'); trophies.fire('heartLost', {}); }
+    sfx.play('defeat');
     trophies.fire('roundLost', Object.assign({}, res, { reason: res.result }));
+    updateHud();
+    showRunOver(res);
   }
+}
 
-  updateHud();
-  if (!res.won && !res.heartSaved) {
-    const hs = $('#stat-hearts').querySelectorAll('.heart-svg');
-    if (hs[game.hearts]) hs[game.hearts].classList.add('breaking');
-  }
-
-  if (game.phase === PHASE.WON) { runComplete(); return; }
-
-  const rows = res.won
-    ? `<li><span>Spent</span><span>$${res.spent}</span></li>
-       <li><span>Half-moves</span><span>${res.plies} / ${res.plyLimit}</span></li>
-       <li><span>Purse</span><span>+$${res.income}</span></li>
-       ${res.bounty ? `<li class="sub"><span>Blood money (${captures} captures)</span><span>+$${res.bounty}</span></li>` : ''}
-       ${res.refund ? `<li class="sub"><span>Scavenged</span><span>+$${res.refund}</span></li>` : ''}
-       ${res.healed ? `<li class="sub"><span>Second wind</span><span>+${res.healed} heart</span></li>` : ''}
-       ${res.overtimeUsed ? '<li class="sub"><span>Won on OVERTIME</span><span>&nbsp;</span></li>' : ''}
-       <li class="big"><span>Bank</span><span>$${game.money}</span></li>`
-    : `<li><span>Burned</span><span>$${res.spent}</span></li>
-       <li><span>Half-moves</span><span>${res.plies} / ${res.plyLimit}</span></li>
-       ${res.heartSaved ? '<li class="sub"><span>INSURANCE covered it</span><span>no heart lost</span></li>' : ''}
-       <li class="big"><span>Lives left</span><span>${game.hearts}</span></li>`;
-
-  const over = game.phase === PHASE.OVER;
+// The slot-machine moment: count the purse, then slam each multiplier on.
+async function showPayout(res) {
+  const pay = res.pay;
   const bg = modal(`
-    <h2>${over ? 'RUN OVER' : t.title}</h2>
-    <p>${over ? 'No lives left. Your fish swims home.' : t.line}</p>
-    <ul class="tally">${rows}</ul>
-    ${over ? `<p>You reached <b>wave ${game.wave}</b>, fight ${game.round}, as a <b>${fishTier(game.fishLevel).name}</b>.</p>` : ''}
-    <div class="modal-actions"><button class="big-btn" id="m-next">${over ? 'AGAIN' : 'CONTINUE'}</button></div>`);
-  bg.querySelector('#m-next').onclick = () => {
+    <h2>MATE!</h2>
+    <p>Your fish delivered in ${res.plies} of ${res.plyLimit} half-moves.</p>
+    <ul class="payout-sheet" id="pay-sheet"></ul>
+    <div class="modal-actions"><button class="big-btn hidden" id="m-next">CONTINUE</button></div>`);
+  const sheet = bg.querySelector('#pay-sheet');
+  const next = bg.querySelector('#m-next');
+
+  const addRow = async (cls, label, value, note, delay = 380) => {
+    const li = el('li', cls, `<span>${label}${note ? `<span class="pnote">${note}</span>` : ''}</span>
+                              <span class="pv">${value}</span>`);
+    sheet.appendChild(li);
+    void li.offsetWidth;
+    li.classList.add('in');
+    await sleep(delay);
+  };
+
+  for (const l of pay.lines) {
+    sfx.play('coin');
+    await addRow('', l.label, '$' + l.value, '', 300);
+  }
+  sfx.play('uiClick');
+  await addRow('', 'Subtotal', '$' + pay.subtotal, '', 340);
+
+  for (const m of pay.mults) {
+    const big = m.mult >= 1.5;
+    sfx.play(big ? 'upgrade' : 'buy');
+    await addRow('mult' + (big ? ' big' : ''), m.label, '×' + m.mult.toFixed(2), m.note, 620);
+  }
+  if (pay.refund) {
+    sfx.play('coin');
+    await addRow('', 'Scavenged back', '$' + pay.refund, '', 320);
+  }
+  sfx.play('mate');
+  await addRow('total', 'PAYOUT', '$' + pay.total, '', 260);
+
+  next.classList.remove('hidden');
+  next.onclick = () => { sfx.play('uiClick'); bg.remove(); openShop(); };
+}
+
+function showRunOver(res) {
+  const tier = fishTier(game.fishLevel);
+  const won = game.history.filter(h => h.won).length;
+  const bg = modal(`<div class="dead-card">
+    <div class="dead-fish">${fishSvg(tier.art, { size: 260 })}</div>
+    <h2>RUN OVER</h2>
+    <p>${LOSS_LINE[res.result] || LOSS_LINE.loss}</p>
+    <p style="font-size:15px;color:var(--ink-mid)">There are no second chances. That was the deal.</p>
+    <ul class="tally">
+      <li><span>Fights won</span><span>${won}</span></li>
+      <li><span>Reached</span><span>wave ${game.wave}, fight ${game.round}</span></li>
+      <li><span>Final fish</span><span>${tier.name} (skill ${game.fishLevel})</span></li>
+      <li><span>Perks collected</span><span>${game.ownedPerks().reduce((s, p) => s + p.count, 0)}</span></li>
+      <li class="big"><span>Earned in total</span><span>$${game.totalEarned}</span></li>
+    </ul>
+    <div class="modal-actions"><button class="big-btn" id="m-again">NEW RUN</button></div></div>`);
+  bg.querySelector('#m-again').onclick = () => {
     sfx.play('uiClick');
     bg.remove();
-    if (over) { game.reset(); trophies.fire('runStart', {}); startRound(); }
-    else openShop();
+    game.reset();
+    trophies.fire('runStart', {});
+    startRound();
   };
 }
 
-function runComplete() {
+function runComplete(res) {
   sfx.play('mate');
   const bg = modal(`<div class="boss-card">
     <div class="boss-art">${fishSvg(fishTier(game.fishLevel).art, { size: 300 })}</div>
@@ -563,9 +634,10 @@ function runComplete() {
     <p class="boss-taunt">It has nothing left to calculate.</p>
     <ul class="tally">
       <li><span>Fights won</span><span>${game.history.filter(h => h.won).length}</span></li>
+      <li><span>Final payout</span><span>$${res.pay.total}</span></li>
       <li><span>Perks collected</span><span>${game.ownedPerks().reduce((s, p) => s + p.count, 0)}</span></li>
       <li><span>Final fish</span><span>${fishTier(game.fishLevel).name} (skill ${game.fishLevel})</span></li>
-      <li class="big"><span>Money left</span><span>$${game.money}</span></li>
+      <li class="big"><span>Earned in total</span><span>$${game.totalEarned}</span></li>
     </ul>
     <div class="modal-actions"><button class="big-btn" id="m-again">NEW RUN</button></div></div>`);
   bg.querySelector('#m-again').onclick = () => {
@@ -604,7 +676,7 @@ function openShop() {
             <div class="sc-body">
               <div class="sc-top"><span class="sc-name">${i.name}</span><span class="sc-cost">$${i.cost}</span></div>
               <div class="sc-value">${i.value}</div>
-              <div class="sc-desc">${i.desc}${i.id === 'overclock' ? ` <b>${overclockValueHint(game.fishLevel)}</b>` : ''}</div>
+              <div class="sc-desc">${i.desc}</div>
             </div></div>`).join('')}
       </div>
 
@@ -674,6 +746,7 @@ async function startRound() {
   $('#rail-left').classList.remove('hidden');
   $('#speed-row').classList.add('hidden');
   $('#btn-start').classList.remove('hidden');
+  $('#verdict').classList.remove('hidden');
 
   const kind = $('#enemy-kind');
   kind.textContent = game.isBoss ? 'BOSS' : `SKIRMISH ${game.slot}/${SKIRMISHES_PER_WAVE}`;
@@ -697,7 +770,7 @@ async function startRound() {
   trophies.fire('roundStart', { round: game.round, wave: game.wave, money: game.money });
 
   if (game.isBoss) await bossIntro(game.boss);
-  if (game.roundBudget) { pulse('#stat-money'); sfx.play('coin'); }
+  if (game.roundBudget) { pulse('#dash-money'); sfx.play('coin'); }
 }
 
 // ===========================================================================
@@ -727,14 +800,18 @@ function openHow() {
        on your half, ranks 5&ndash;8. You are Black.</p>
     <p><b>2. White always moves first</b> and is always Stockfish at full strength.
        You may threaten mate; White always gets to answer.</p>
-    <p><b>3. Your fish starts at skill 0</b> and is genuinely terrible. What it lacks in
-       ability you must replace with material, and material costs money.</p>
-    <p><b>4. You only win by checkmate</b>, inside the half-move limit. Otherwise: a heart.</p>
-    <p><b>5. Leftover money carries over.</b> That is the whole game: win as <em>cheaply</em>
-       as you can, so you can afford to feed the fish. A better fish needs less material.
-       Less material means more savings. More savings mean a better fish.</p>
-    <p><b>6. Three skirmishes, then a boss.</b> Bosses bend the rules and pay well.
-       Survive five wardens and PRIME is waiting.</p>
+    <p><b>3. Mate instinct.</b> However stupid your fish is, it never misses a forced
+       mate that is really on the board. Everything else it will happily botch.</p>
+    <p><b>4. One loss ends the run.</b> No lives, no retries. That is why the board
+       tells you the multiplier and warns you about mate in one <em>before</em> you commit.</p>
+    <h3>THE MULTIPLIERS</h3>
+    <p><b>THRIFT</b> is the big one: the less material you bring over White, the more a
+       win pays — up to <b>×3</b> if you win with <em>less</em> material than White.
+       Overkill armies win easily and pay almost nothing.</p>
+    <p><b>SPEED</b> pays up to ×1.5 for mating well inside the clock.
+       <b>LOOT</b> pays for every enemy point you take.
+       <b>SALVAGE</b> refunds half the value of every piece of yours still standing.</p>
+    <p>So the whole game is one question: <em>how little can you get away with?</em></p>
     <div class="modal-actions"><button class="big-btn" id="m-ok">GOT IT</button></div>`,
     { dismissable: true });
   bg.querySelector('#m-ok').onclick = () => bg.remove();
@@ -751,6 +828,7 @@ $('#btn-clear').onclick = () => {
 };
 $('#btn-trophies').onclick = () => { sfx.play('uiClick'); openTrophies(); };
 $('#btn-how').onclick = openHow;
+$('#btn-how2').onclick = openHow;
 $('#btn-sound').onclick = () => {
   const muted = sfx.toggle();
   $('#btn-sound').classList.toggle('off', muted);
